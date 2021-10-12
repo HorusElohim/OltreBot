@@ -78,7 +78,28 @@ class Music(Cog):
         await channel.connect()
 
     @commands.command()
-    async def play(self, ctx, *, query):
+    async def play(self, ctx, *args):
+        """Plays the best match on youtube of what you search """
+        member = ctx.author
+        try:
+            data = []
+            async with ctx.typing():
+                while len(data) == 0:
+                    data = pd.DataFrame(YoutubeSearch(f'search {"".join(args)}', max_results=1).to_dict())
+                    data = data.drop(
+                        columns=['id', 'channel', 'long_desc', 'publish_time', 'thumbnails', 'duration', 'views'])
+                    print(data)
+                    await ctx.send(Success("```" + f'\n\n{tabulate(data, headers="keys", tablefmt="rst")}' + "```"))
+                url = data["url_suffix"][0]
+                print(f"Url retrieved: {url}")
+                player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+                ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+                await ctx.send(f'Now playing: {player.title}. Chosen by {member}')
+        except Exception as e:
+            await ctx.send(Error(f"Exception: {e}"))
+
+    @commands.command()
+    async def play_local(self, ctx, *, query):
         """Plays a file from the local filesystem"""
         member = ctx.author
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
