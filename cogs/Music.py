@@ -65,7 +65,7 @@ class Music(Cog):
 
     @Cog.listener()
     async def on_ready(self):
-        print('Logged in as {0} ({0.id})'.format(self.bot.user))
+        print('Music logged in as {0} ({0.id})'.format(self.bot.user))
         print('------')
 
     @commands.command()
@@ -80,11 +80,11 @@ class Music(Cog):
     @commands.command()
     async def play(self, ctx, *, query):
         """Plays a file from the local filesystem"""
-
+        member = ctx.author
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
         ctx.voice_client.play(source, after=lambda e: print('Player error: %s' % e) if e else None)
 
-        await ctx.send('Now playing: {}'.format(query))
+        await ctx.send(f'Now playing: {query}. Chosen by {member}')
 
     @commands.command()
     async def yt(self, ctx, *, url):
@@ -95,16 +95,18 @@ class Music(Cog):
             ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
 
         await ctx.send('Now playing: {}'.format(player.title))
+        print('Now playing: {}'.format(player.title))
 
     @commands.command()
     async def stream(self, ctx, *, url):
         """Streams from a url (same as yt, but doesn't predownload)"""
-
+        member = ctx.author
         async with ctx.typing():
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
             ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
 
-        await ctx.send('Now playing: {}'.format(player.title))
+        await ctx.send(f'Now playing: {player.title}. Chosen by {member}')
+        print(f'Now playing: {player.title}. Chosen by {member}')
 
     @commands.command()
     async def volume(self, ctx, volume: int):
@@ -115,6 +117,7 @@ class Music(Cog):
 
         ctx.voice_client.source.volume = volume / 100
         await ctx.send("Changed volume to {}%".format(volume))
+        ("Changed volume to {}%".format(volume))
 
     @commands.command()
     async def search(self, ctx, *args):
@@ -127,6 +130,7 @@ class Music(Cog):
             data = data.drop(columns=['id', 'channel', 'long_desc', 'publish_time', 'thumbnails', 'duration', 'views'])
             print(data)
             await ctx.send(Success("```" + f'\n\n{tabulate(data, headers="keys", tablefmt="rst")}' + "```"))
+            print(f"Searched: {''.join(args)}")
 
         except Exception as e:
             await ctx.send(Error(f"Exception: {e}"))
@@ -148,6 +152,12 @@ class Music(Cog):
                 raise commands.CommandError("Author not connected to a voice channel.")
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
+
+    @commands.command()
+    async def gaetano(self, ctx):
+        """ ? """
+        member = ctx.author
+        await ctx.send(f'Si hai proprio ragione {member.name}, Gaetano puzza ! xD ')
 
 
 def setup(bot):
