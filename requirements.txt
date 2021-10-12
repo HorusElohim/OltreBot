@@ -2,3 +2,6 @@ discord.py[voice]
 python-dotenv~=0.19.1
 tabulate
 setuptools~=44.0.0
+youtube_search
+youtube_dl
+pandas
