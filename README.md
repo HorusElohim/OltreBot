@@ -1,0 +1,3 @@
+# OltreBot
+
+Discord Music Bot.
