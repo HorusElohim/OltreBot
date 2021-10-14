@@ -1,5 +1,9 @@
 from pathlib import Path
 from discord.ext import commands
+from discord import Status
+
+PREFIX = '.'
+STATUS = Status.do_not_disturb
 
 
 class Main:
@@ -7,7 +11,7 @@ class Main:
         self.log = logger
         self.log.debug(f"Started")
         self.config = config
-        self.bot = commands.Bot(command_prefix='.')
+        self.bot = commands.Bot(command_prefix=PREFIX, status=STATUS)
         self.path = Path("./").absolute()
         self.extensions_path = self.path / "cogs"
         self.load_extensions()

@@ -1,33 +1,24 @@
 from discord.ext.commands import Cog
 from discord.ext import commands
 from datetime import datetime
+from util import get_logger
 
-__version__ = '0.0.1'
+LOGGER = get_logger('Oltre.Welcome')
 
 
 class Welcome(Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.log = LOGGER
         self._last_member = None
 
     @Cog.listener()
     async def on_member_join(self, member):
         channel = member.guild.system_channel
+        guild = member.guild
         if channel is not None:
-            await channel.send(
-                f'Welcome {member.mention} to the best Warzone Tournament Bot for the moment {datetime.now()}.')
-            print(f'New menber join {member.mention}')
-
-    @commands.command()
-    async def hello(self, ctx, *args):
-        member = ctx.author
-        if self._last_member is None or self._last_member.id != member.id:
-            await ctx.send(f'Hi {member.name}')
-            print(f'Said hi to {member.mention}')
-        else:
-            await ctx.send(f'Hi again {member.name}!')
-            print(f'Said hi again to {member.mention}')
-            self._last_member = member
+            await channel.send(f'{datetime.now()} Welcome {member.mention} to the server {guild}.')
+            self.log.info(f'New member join in the server: {guild}++ -> {member.mention}')
 
 
 def setup(bot):
