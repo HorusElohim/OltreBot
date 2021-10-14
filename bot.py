@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import Status
 
 PREFIX = '.'
-STATUS = Status.do_not_disturb
+STATUS = Status.online
 
 
 class Main:

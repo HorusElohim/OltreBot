@@ -30,7 +30,7 @@ class Online(Cog):
             for channel in guild.channels:
                 if isinstance(channel, TextChannel):
                     self.log.info(f'Writing to {guild}::{channel}')
-                    # await channel.send(f'Oltre Bot is back online 👽')
+                    await channel.send(f'Oltre Bot is back online 👽')
 
     @commands.command()
     async def url(self, ctx):
