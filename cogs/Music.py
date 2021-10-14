@@ -1,9 +1,10 @@
 import discord
-from discord.ext.commands import Cog
-from discord.ext import commands
+from discord.ext.commands import Cog, Context
+from discord.ext import commands, tasks
 from youtube_search import YoutubeSearch
 from tabulate import tabulate
 from discord import Embed, Colour
+from discord.opus import Encoder as OpusEncoder
 import asyncio
 import youtube_dl
 import pandas as pd
@@ -71,8 +72,13 @@ class Music(Cog):
     async def on_ready(self):
         self.log.info(f'Music logged in with bot: {self.bot.user}')
 
+    # @tasks.loop(seconds=5)
+    # async def manage_queue(self):
+    #     if self.queue.qsize() == 0:
+    #         return
+
     @commands.command()
-    async def join(self, ctx, *, channel: discord.VoiceChannel):
+    async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
         """Joins a voice channel"""
 
         if ctx.voice_client is not None:
@@ -126,7 +132,25 @@ class Music(Cog):
         return Embed(title='Error encountered')
 
     @commands.command()
-    async def play(self, ctx, *args):
+    async def pause(self, ctx: Context, *args):
+        """Plays the best match on youtube of what you search """
+        member = ctx.author
+        try:
+            ctx.voice_client.pause()
+        except Exception as e:
+            await ctx.send(Error(f"Exception: {e}"))
+
+    @commands.command()
+    async def resume(self, ctx: Context, *args):
+        """Plays the best match on youtube of what you search """
+        member = ctx.author
+        try:
+            ctx.voice_client.resume()
+        except Exception as e:
+            await ctx.send(Error(f"Exception: {e}"))
+
+    @commands.command()
+    async def play(self, ctx: Context, *args):
         """Plays the best match on youtube of what you search """
         member = ctx.author
         try:
@@ -155,7 +179,7 @@ class Music(Cog):
             await ctx.send(Error(f"Exception: {e}"))
 
     @commands.command()
-    async def play_local(self, ctx, *, query):
+    async def play_local(self, ctx: Context, *, query):
         """Plays a file from the local filesystem"""
         member = ctx.author
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
@@ -164,16 +188,7 @@ class Music(Cog):
         await ctx.send(f'Now playing: {query}. Chosen by {member}')
 
     @commands.command()
-    async def stream(self, ctx, *, url):
-        """Streams from a url (same as yt, but doesn't pre-download)"""
-        member = ctx.author
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: self.log.info('Player error: %s' % e) if e else None)
-        await ctx.send(embed=self.construct_now_playing_embed(member, url))
-
-    @commands.command()
-    async def volume(self, ctx, volume: int):
+    async def volume(self, ctx: Context, volume: int):
         """Changes the player's volume"""
 
         if ctx.voice_client is None:
@@ -184,7 +199,7 @@ class Music(Cog):
         self.log.info("Changed volume to {}%".format(volume))
 
     @commands.command()
-    async def search(self, ctx, *args):
+    async def search(self, ctx: Context, *args):
         """Search for youtube urls"""
         member = ctx.author
         try:
@@ -201,7 +216,6 @@ class Music(Cog):
         await ctx.voice_client.disconnect()
 
     @play.before_invoke
-    @stream.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:

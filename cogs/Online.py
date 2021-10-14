@@ -2,8 +2,11 @@ from discord.ext.commands import Cog
 from datetime import datetime
 from discord import TextChannel
 from util import get_logger
+from discord.ext import commands
 
 LOGGER = get_logger('Oltre.Online')
+
+BOT_URL = 'https://discord.com/api/oauth2/authorize?client_id=897532478485565480&permissions=8&scope=bot'
 
 
 # Playlist internal
@@ -28,6 +31,11 @@ class Online(Cog):
                 if isinstance(channel, TextChannel):
                     self.log.info(f'Writing to {guild}::{channel}')
                     # await channel.send(f'Oltre Bot is back online 👽')
+
+    @commands.command()
+    async def url(self, ctx):
+        """ Get bot url """
+        await ctx.send(f'Use this to add the bot on your channel: {BOT_URL}')
 
 
 def setup(bot):
