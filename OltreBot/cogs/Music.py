@@ -6,7 +6,10 @@ from discord import Embed, Colour
 import asyncio
 import youtube_dl
 import pandas as pd
+from colorama import Fore
 from OltreBot.util import get_logger
+from OltreBot.util.colors import *
+from typing import Union
 
 LOGGER = get_logger('Music', sub_folder='cog')
 
@@ -32,7 +35,7 @@ ytdl_format_options = {
     'noplaylist': False,
     'nocheckcertificate': True,
     'ignoreerrors': False,
-    'logtostderr': False,
+    'logtostderr': True,
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
@@ -67,38 +70,65 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-class Music(Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.log = LOGGER
+class YoutubeTrack:
+    def __init__(self, logger, user_input):
+        self.log = logger
+        self.is_playlist = False
+        self.error = False
+        self.user_input = user_input
+        self.url = self.extract_url()
+        # Need search the user input and retrieve all info
+        if self.url is None:
+            self.log.debug(f"YoutubeTrack::{black('need_search first')}")
+            db_info = self.get_youtube_dbinfo(self.user_input)
+            self.id = db_info.id[0]
+            self.url = f'https://www.youtube.com{db_info.url_suffix[0]}'
+        # User input contain the id and no need to retrieve the url
+        else:
+            self.log.debug(f"YoutubeTrack::{black('contains youtube id')}")
+            self.id = self.extract_id()
+            db_info = self.get_youtube_dbinfo(self.id)
 
-    @Cog.listener()
-    async def on_ready(self):
-        self.log.info(f'Music logged in with bot: {self.bot.user}')
+        self.title = db_info.title[0]
+        self.views = db_info.views[0]
+        self.pub_time = db_info.publish_time[0]
+        self.thumbnail = db_info.thumbnails[0][0]
+        self.duration = db_info.duration[0]
 
-    # @tasks.loop(seconds=5)
-    # async def manage_queue(self):
-    #     if self.queue.qsize() == 0:
-    #         return
+    def extract_url(self) -> Union[str, None]:
+        if 'https' in self.user_input:
+            return self.user_input
+        elif '/watch?v=' in self.user_input:
+            return f'https://www.youtube.com{self.user_input}'
+        else:
+            return None
 
-    @commands.command()
-    async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
-        """Joins a voice channel"""
+    def extract_id(self) -> str:
+        # Retrieve ID
+        id_track = self.url.split('watch?v=')[-1]
+        # Check if is a playlist
+        if '=' in id_track:
+            id_track = id_track.split('=')[0]
+            self.is_playlist = True
+        return id_track
 
-        if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
-
-        await channel.connect()
-
-    def search_on_youtube(self, music, res=1):
+    def get_youtube_dbinfo(self, target) -> pd.DataFrame:
         search_info = []
-        self.log.info(f'Search on youtube: {music}')
-        search_info = pd.DataFrame(YoutubeSearch(music, max_results=res).to_dict())
-        self.log.info(f'Search completed with {len(search_info)} result')
+        self.log.info(f'Searching on youtube: {black(target)}')
+        try:
+            search_info = pd.DataFrame(YoutubeSearch(target, max_results=1).to_dict())
+        except Exception as e:
+            self.log.error(f"Exception on search on youtube: {red(e)}")
+            self.error = True
+            return pd.DataFrame()
+        self.log.info(f'Search completed with {black(len(search_info))} result')
         return search_info
 
-    def construct_search_embed(self, author: discord.client, search_target: str, search_result: pd.DataFrame):
-        self.log.info(f"Creating search embed for {search_target} asked by {author.name}")
+
+class MusicEmbed:
+    @staticmethod
+    def youtube_search(self, author: discord.client, search_target: str, search_result: pd.DataFrame):
+        self.log.info(f"Creating search embed for {search_target} asked by {yellow(author.name)}")
         embed = Embed(title=f'Search Results',
                       author=self.bot.user.name,
                       description='here the result from youtube. If you want to play a song use the url below',
@@ -113,27 +143,48 @@ class Music(Cog):
         embed.set_footer(text=f'Requested by: {author.name}', icon_url=author.avatar_url)
         return embed
 
-    def construct_now_playing_embed(self, author: discord.client, url: str):
-        self.log.info(f"Creating now playing embed asked by {author.name}")
+    @staticmethod
+    def youtube_playing(self, author: discord.client, yt_track: YoutubeTrack):
+        self.log.info(f"Creating now playing embed asked by {yellow(author.name)}")
 
-        id_track = url.split('watch?v=')[-1]
-        self.log.info(f"Extracting id: {id_track}")
+        if yt_track.error:
+            return Embed(title=f'Error on user input:  {yt_track.user_input}')
 
-        search_result = self.search_on_youtube(id_track)
-        if len(search_result) > 0:
-            embed = Embed(title=f'Now Playing {search_result.title[0]}',
-                          author=self.bot.user.name,
-                          url=url,
-                          colour=Colour(0xE11B1B))
-            self.log.debug(f"Thumbnails: {search_result.thumbnails[0][0]}")
-            embed.set_thumbnail(url=self.bot.user.avatar_url)
-            embed.set_image(url=search_result.thumbnails[0][0])
-            embed.add_field(name='Duration', value=search_result.duration[0], inline=True)
-            embed.add_field(name='Views', value=search_result.views[0], inline=True)
-            embed.add_field(name='Publish Time', value=search_result.publish_time[0], inline=True)
-            embed.set_footer(text=f'Requested by: {author.name}', icon_url=author.avatar_url)
-            return embed
-        return Embed(title='Error encountered')
+        embed = Embed(title=f'Now Playing {yt_track.title}',
+                      author=self.bot.user.name,
+                      url=yt_track.url,
+                      colour=Colour(0xE11B1B))
+
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        embed.set_image(url=yt_track.thumbnail)
+        embed.add_field(name='Duration', value=yt_track.duration, inline=True)
+        embed.add_field(name='Views', value=yt_track.views, inline=True)
+        embed.add_field(name='Publish Time', value=yt_track.pub_time, inline=True)
+        embed.set_footer(text=f'Requested by: {author.name}', icon_url=author.avatar_url)
+        return embed
+
+
+class Music(Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.log = LOGGER
+
+    @Cog.listener()
+    async def on_ready(self):
+        self.log.info(f'Music logged in with bot: {self.bot.user}')
+
+    # @tasks.loop(seconds=5)
+    # async def manage_queue(self):
+    #
+
+    @commands.command()
+    async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
+        """Joins a voice channel"""
+
+        if ctx.voice_client is not None:
+            return await ctx.voice_client.move_to(channel)
+
+        await channel.connect()
 
     @commands.command()
     async def pause(self, ctx: Context, *args):
@@ -157,27 +208,16 @@ class Music(Cog):
     async def play(self, ctx: Context, *args):
         """Plays the best match on youtube of what you search """
         member = ctx.author
+        user_input = " ".join(args)
+        self.log.info(f"play request from user {yellow(member.name)}. Asking for {green(user_input)}")
+
         try:
-            input_data = " ".join(args)
-
             async with ctx.typing():
-                need_search = True
-                if 'https' in input_data:
-                    need_search = False
-                    url = input_data
-                elif '/watch' in input_data:
-                    need_search = False
-                    url = f'https://www.youtube.com{input_data}'
+                yt_track = YoutubeTrack(self.log, user_input)
 
-                if need_search:
-                    search_result = self.search_on_youtube(input_data)
-                    url = f'https://www.youtube.com{search_result.url_suffix[0]}'
-                    await ctx.send(embed=self.construct_search_embed(member, input_data, search_result))
-
-                self.log.debug(f"Url to request:  {url}")
-                player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-                ctx.voice_client.play(player, after=lambda e: self.log.info('Player error: %s' % e) if e else None)
-                await ctx.send(embed=self.construct_now_playing_embed(member, url))
+            player = await YTDLSource.from_url(yt_track.url, loop=self.bot.loop, stream=True)
+            ctx.voice_client.play(player, after=lambda e: self.log.info('Player error: %s' % e) if e else None)
+            await ctx.send(embed=MusicEmbed.youtube_playing(self, member, yt_track))
 
         except Exception as e:
             await ctx.send(Error(f"Exception: {e}"))
@@ -201,18 +241,6 @@ class Music(Cog):
         ctx.voice_client.source.volume = volume / 100
         await ctx.send("Changed volume to {}%".format(volume))
         self.log.info("Changed volume to {}%".format(volume))
-
-    @commands.command()
-    async def search(self, ctx: Context, *args):
-        """Search for youtube urls"""
-        member = ctx.author
-        try:
-            input_data = " ".join(args)
-            search_result = self.search_on_youtube(input_data, 5)
-            await ctx.send(embed=self.construct_search_embed(member, input_data, search_result))
-
-        except Exception as e:
-            await ctx.send(Error(f"Exception: {e}"))
 
     @commands.command()
     async def stop(self, ctx):
