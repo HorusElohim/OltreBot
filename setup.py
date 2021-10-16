@@ -1,5 +1,8 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
+PackageName = "OltreBot"
+AUTHOR = "HorusElohim"
+VERSION = "0.3"
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -10,51 +13,17 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
-MODULES = ['bot' , 'cogs' , 'data', 'logger', 'manager']
-
-def get_package_name():
-    return 'tdbm'
-
-def produce_module_dot(name):
-    return f'{get_package_name()}.{name}'
-
-def produce_module_slash(name):
-    return f'{get_package_name()}/{name}'
-
-def produce_import_module(name):
-    return {produce_module_dot(name):
-                produce_module_slash(name)}
-
-def produce_packages_dirs():
-    packages_dirs = {get_package_name() : get_package_name()}
-
-    for module in MODULES:
-        packages_dirs.update(produce_import_module(module))
-
-    return packages_dirs
-
-def produce_packages():
-    packages = [get_package_name()]
-
-    for module in MODULES:
-        packages.append(produce_module_dot(module))
-
-    return packages
-
-
-
 setup(
-    name='tdbm',
-    author='MarkNo1',
-    url='https://github.com/MarkNo1-github/TournamentDiscordBot',
-    version='0.0.4',
+    name=PackageName,
+    author=AUTHOR,
+    url='https://github.com/HorusElohim/NetNode',
+    version=VERSION,
     license=license,
-    description='Manage Tournament in Discord',
+    description='',
     long_description=readme,
-    package_dir=produce_packages_dirs(),
-    packages=produce_packages(),
-    entry_points ={'console_scripts': ['tdbm = tdbm.manager:main']},
+    packages=find_namespace_packages(include=[PackageName, f'{PackageName}.*']),
+    entry_points={'console_scripts': [f'{PackageName} = {PackageName}.scripts.run_bot:main']},
     install_requires=requirements,
     include_package_data=True,
-    python_requires='>=3.6'
+    python_requires='>=3.7'
 )

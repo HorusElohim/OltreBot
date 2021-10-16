@@ -2,15 +2,19 @@ import discord
 from discord.ext.commands import Cog, Context
 from discord.ext import commands, tasks
 from youtube_search import YoutubeSearch
-from tabulate import tabulate
 from discord import Embed, Colour
-from discord.opus import Encoder as OpusEncoder
 import asyncio
 import youtube_dl
 import pandas as pd
-from util import get_logger
+from OltreBot.util import get_logger
 
-LOGGER = get_logger('Oltre.Music')
+LOGGER = get_logger('Music', sub_folder='cog')
+
+# To-DO
+# Continue code refactoring and cleaning
+# Playlist internal
+# Auto-Disconnect when no more music
+
 
 __version__ = '0.0.1'
 
@@ -25,7 +29,7 @@ ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': True,
+    'noplaylist': False,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,

@@ -1,9 +1,9 @@
 from discord.ext.commands import Cog
 from discord.ext import commands
 from datetime import datetime
-from util import get_logger
+from OltreBot.util import get_logger
 
-LOGGER = get_logger('Oltre.Welcome')
+LOGGER = get_logger('Welcome', sub_folder='cog')
 
 
 class Welcome(Cog):

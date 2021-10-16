@@ -4,4 +4,5 @@ tabulate
 setuptools~=44.0.0
 youtube_search
 youtube_dl
+colorama
 pandas

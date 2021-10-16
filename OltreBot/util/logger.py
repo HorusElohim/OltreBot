@@ -4,7 +4,7 @@ import sys
 from logging.handlers import TimedRotatingFileHandler
 from .path import get_home_path, Path, mkdir
 
-FORMATTER = logging.Formatter("'[%(asctime)s]-%(process)d-%(levelname).4s %(message)s")
+FORMATTER = logging.Formatter("'[%(asctime)s]-%(process)d-%(levelname).4s [%(filename)s:%(lineno)d] %(message)s")
 
 
 def _logger_get_console_handler(level: int = logging.DEBUG):
@@ -21,7 +21,7 @@ def _logger_get_file_handler(logger_path, level: int = logging.DEBUG):
     return file_handler
 
 
-def get_logger(logger_name, path: Path = get_home_path(), console_level: int = logging.DEBUG,
+def get_logger(logger_name, path: Path = get_home_path(), sub_folder: str = None, console_level: int = logging.DEBUG,
                file_level: int = logging.DEBUG):
     # Get the logger if already exist or a new one
     logger = logging.getLogger(logger_name)
@@ -30,7 +30,10 @@ def get_logger(logger_name, path: Path = get_home_path(), console_level: int = l
         logger.setLevel(logging.DEBUG)  # better to have too much log than not enough
         logger.addHandler(_logger_get_console_handler(console_level))
 
-    log_path = path / 'logs' / f"{logger_name}.log"
+    if sub_folder:
+        log_path = path / 'logs' / sub_folder / f"{logger_name}.log"
+    else:
+        log_path = path / 'logs' / f"{logger_name}.log"
     mkdir(log_path.parent)
     logger.addHandler(_logger_get_file_handler(log_path, file_level))
     # with this pattern, it's rarely necessary to propagate the error up to parent

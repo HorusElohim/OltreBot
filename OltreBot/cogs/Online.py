@@ -1,18 +1,13 @@
 from discord.ext.commands import Cog
 from datetime import datetime
 from discord import TextChannel
-from util import get_logger
+from colorama import Fore
+from OltreBot.util import get_logger, color
 from discord.ext import commands
 
-LOGGER = get_logger('Oltre.Online')
+LOGGER = get_logger('Online', sub_folder='cog')
 
 BOT_URL = 'https://discord.com/api/oauth2/authorize?client_id=897532478485565480&permissions=8&scope=bot'
-
-
-# Playlist internal
-# Auto-Disconnect when no more music
-# play if receive a url stream url else search and then play
-
 
 class Online(Cog):
     def __init__(self, bot):
@@ -26,11 +21,13 @@ class Online(Cog):
         self.log.info(f'Name: {self.bot.user.name}')
         self.log.info(f'ID: {self.bot.user.id}')
         for guild in self.bot.guilds:
-            self.log.info(f"Connected to Guild: {guild} ")
+            guild_text = f'{color(guild, c=Fore.BLUE)}'
+            self.log.info(f"Connected to Guild: {guild_text} ")
             for channel in guild.channels:
+                channel_text = f'{color(channel, c=Fore.CYAN)}'
                 if isinstance(channel, TextChannel):
-                    self.log.info(f'Writing to {guild}::{channel}')
-                    await channel.send(f'Oltre Bot is back online 👽')
+                    self.log.info(f'Writing to {guild_text}::{channel_text}')
+                    # await channel.send(f'Oltre Bot is back online 👽')
 
     @commands.command()
     async def url(self, ctx):
