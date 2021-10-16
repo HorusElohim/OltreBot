@@ -96,8 +96,11 @@ class YoutubeTrack:
         self.duration = db_info.duration[0]
 
     def extract_url(self) -> Union[str, None]:
-        if 'https' in self.user_input:
+        if 'youtube' in self.user_input:
+            if 'http' not in self.user_input:
+                self.user_input = f'https://{self.user_input}'
             return self.user_input
+
         elif '/watch?v=' in self.user_input:
             return f'https://www.youtube.com{self.user_input}'
         else:
@@ -164,18 +167,77 @@ class MusicEmbed:
         return embed
 
 
+class DSClient:
+    def __init__(self, log, ctx: Context):
+        self.log = log
+        self.ctx = ctx
+        self.inactive_counter = 0
+        self.to_delete = False
+
+    async def send(self, msg):
+        await self.ctx.send(msg)
+
+    def update_status(self):
+        if not self.ctx.voice_client.is_playing():
+            self.inactive_counter += 1
+            self.log.info(f'DSClient<{cyan(self.get_id())}> is playing <{red("False")}> ({red(self.inactive_counter)})')
+
+    async def manage_activity(self):
+        if not self.to_delete:
+            self.update_status()
+            if self.inactive_counter > 2:
+                self.log.info(f'DSClient<{cyan(self.get_id())}> automatic disconnection')
+                await self.send("Oltre Bot is not playing anything for too long... Bye Bye")
+                await self.ctx.voice_client.disconnect()
+                self.to_delete = True
+
+    def get_id(self):
+        return self.ctx.voice_client.channel.id
+
+
 class Music(Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = LOGGER
+        self.ds_clients: {str: DSClient} = {}
+        self.manage_callback.start()
+        self.log.info(f'manage_callback has started...')
 
     @Cog.listener()
     async def on_ready(self):
         self.log.info(f'Music logged in with bot: {self.bot.user}')
 
-    # @tasks.loop(seconds=5)
-    # async def manage_queue(self):
-    #
+    def is_new_client(self, ds_id):
+        return ds_id not in self.ds_clients
+
+    def add_ds_client(self, ctx: Context):
+        self.ds_clients.update({ctx.voice_client.channel.id: DSClient(self.log, ctx)})
+
+    def manage_ds_client(self, ctx: Context):
+        if self.is_new_client(ctx.voice_client.channel.id):
+            self.add_ds_client(ctx)
+
+    def remove_ds_client(self, ds_id):
+        del self.ds_clients[ds_id]
+
+    @tasks.loop(seconds=5)
+    async def manage_callback(self):
+        try:
+            to_delete = []
+
+            if len(self.ds_clients) > 0:
+                for ds_id, ds_client in self.ds_clients.items():
+                    # Manage activity of the DSClient - Disconnect if needed
+                    await ds_client.manage_activity()
+                    if ds_client.to_delete:
+                        to_delete.append(ds_id)
+
+                for id_delete in to_delete:
+                    self.log.info(f'Removing id of channel: {red(id_delete)}')
+                    self.remove_ds_client(id_delete)
+
+        except Exception as e:
+            self.log.info(f'Timer callback - Exception: {e}')
 
     @commands.command()
     async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
@@ -209,14 +271,19 @@ class Music(Cog):
         """Plays the best match on youtube of what you search """
         member = ctx.author
         user_input = " ".join(args)
-        self.log.info(f"play request from user {yellow(member.name)}. Asking for {green(user_input)}")
+        channel_id = ctx.voice_client.channel.id
+        self.log.info(
+            f"play request from user {yellow(member.name)}. Request<{green(user_input)}> Channel<{blue(channel_id)}>")
 
         try:
             async with ctx.typing():
                 yt_track = YoutubeTrack(self.log, user_input)
 
-            player = await YTDLSource.from_url(yt_track.url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: self.log.info('Player error: %s' % e) if e else None)
+            ctx.voice_client.play(await YTDLSource.from_url(yt_track.url, loop=self.bot.loop, stream=True),
+                                  after=lambda e: self.log.info('Player error: %s' % e) if e else None)
+
+            self.manage_ds_client(ctx)
+
             await ctx.send(embed=MusicEmbed.youtube_playing(self, member, yt_track))
 
         except Exception as e:

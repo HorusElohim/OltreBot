@@ -2,7 +2,7 @@ from setuptools import setup, find_namespace_packages
 
 PackageName = "OltreBot"
 AUTHOR = "HorusElohim"
-VERSION = "0.3"
+VERSION = "0.4"
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -22,7 +22,7 @@ setup(
     description='',
     long_description=readme,
     packages=find_namespace_packages(include=[PackageName, f'{PackageName}.*']),
-    entry_points={'console_scripts': [f'{PackageName} = {PackageName}.scripts.run_bot:main']},
+    entry_points={'console_scripts': [f'{PackageName}_run = {PackageName}.scripts.run_bot:main']},
     install_requires=requirements,
     include_package_data=True,
     python_requires='>=3.7'
