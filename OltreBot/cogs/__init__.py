@@ -1,6 +1,8 @@
 from .Online import Online
 from .Welcome import Welcome
-from .Music import Music
+# from .Music import Music
+from .LavaMusic import Music
+import time
 
 
 def setup(bot):

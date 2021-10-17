@@ -35,5 +35,3 @@ class Online(Cog):
         await ctx.send(f'Use this link to add the bot on your server: {BOT_URL}')
 
 
-def setup(bot):
-    bot.add_cog(Online(bot))

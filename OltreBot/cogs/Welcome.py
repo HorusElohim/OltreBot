@@ -21,5 +21,3 @@ class Welcome(Cog):
             self.log.info(f'New member join in the server: {guild}++ -> {member.mention}')
 
 
-def setup(bot):
-    bot.add_cog(Welcome(bot))

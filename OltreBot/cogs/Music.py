@@ -6,7 +6,6 @@ from discord import Embed, Colour
 import asyncio
 import youtube_dl
 import pandas as pd
-from colorama import Fore
 from OltreBot.util import get_logger
 from OltreBot.util.colors import *
 from typing import Union
@@ -29,10 +28,15 @@ Error = lambda y: f"**`ERROR`** {y}"
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': False,
+    'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': True,
@@ -43,10 +47,14 @@ ytdl_format_options = {
 }
 
 ffmpeg_options = {
-    'options': '-vn'
+    'before_options': '-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -threads 1 -hide_banner -loglevel panic -f wav -ar 48k -b:a 192k '
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+if not discord.opus.is_loaded():
+    discord.opus.load_opus('libopus.so')
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -58,7 +66,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=False, volume=1.0):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
@@ -67,7 +75,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        print(f'FFMPEG URL : {filename}')
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data, volume=volume)
 
 
 class YoutubeTrack:
@@ -188,11 +197,16 @@ class DSClient:
             if self.inactive_counter > 2:
                 self.log.info(f'DSClient<{cyan(self.get_id())}> automatic disconnection')
                 await self.send("Oltre Bot is not playing anything for too long... Bye Bye")
-                await self.ctx.voice_client.disconnect()
+                await self.disconnect()
                 self.to_delete = True
 
     def get_id(self):
         return self.ctx.voice_client.channel.id
+
+    async def disconnect(self):
+        if self.ctx.voice_client.is_connected():
+            await self.send("Oltre Bot disconnected from the voice_channel.")
+            await self.ctx.voice_client.disconnect()
 
 
 class Music(Cog):
@@ -218,6 +232,7 @@ class Music(Cog):
             self.add_ds_client(ctx)
 
     def remove_ds_client(self, ds_id):
+        self.log.info(f'Removing id of channel: {red(ds_id)}')
         del self.ds_clients[ds_id]
 
     @tasks.loop(seconds=5)
@@ -233,7 +248,6 @@ class Music(Cog):
                         to_delete.append(ds_id)
 
                 for id_delete in to_delete:
-                    self.log.info(f'Removing id of channel: {red(id_delete)}')
                     self.remove_ds_client(id_delete)
 
         except Exception as e:
@@ -242,6 +256,7 @@ class Music(Cog):
     @commands.command()
     async def join(self, ctx: Context, *, channel: discord.VoiceChannel):
         """Joins a voice channel"""
+        self.log_user_call_command(ctx, 'join', channel)
 
         if ctx.voice_client is not None:
             return await ctx.voice_client.move_to(channel)
@@ -251,7 +266,8 @@ class Music(Cog):
     @commands.command()
     async def pause(self, ctx: Context, *args):
         """Plays the best match on youtube of what you search """
-        member = ctx.author
+        self.log_user_call_command(ctx, 'pause', *args)
+
         try:
             ctx.voice_client.pause()
         except Exception as e:
@@ -260,7 +276,9 @@ class Music(Cog):
     @commands.command()
     async def resume(self, ctx: Context, *args):
         """Plays the best match on youtube of what you search """
-        member = ctx.author
+
+        self.log_user_call_command(ctx, 'resume', *args)
+
         try:
             ctx.voice_client.resume()
         except Exception as e:
@@ -272,15 +290,20 @@ class Music(Cog):
         member = ctx.author
         user_input = " ".join(args)
         channel_id = ctx.voice_client.channel.id
-        self.log.info(
-            f"play request from user {yellow(member.name)}. Request<{green(user_input)}> Channel<{blue(channel_id)}>")
+
+        self.log_user_call_command(ctx, 'play', *args)
 
         try:
             async with ctx.typing():
                 yt_track = YoutubeTrack(self.log, user_input)
 
-            ctx.voice_client.play(await YTDLSource.from_url(yt_track.url, loop=self.bot.loop, stream=True),
-                                  after=lambda e: self.log.info('Player error: %s' % e) if e else None)
+            if ctx.voice_client.source is not None:
+                volume = ctx.voice_client.source.volume * 100
+            else:
+                volume = 100
+            ctx.voice_client.play(
+                await YTDLSource.from_url(yt_track.url, loop=self.bot.loop, stream=True, volume=volume),
+                after=lambda e: self.log.info('Player error: %s' % e) if e else None)
 
             self.manage_ds_client(ctx)
 
@@ -292,6 +315,8 @@ class Music(Cog):
     @commands.command()
     async def play_local(self, ctx: Context, *, query):
         """Plays a file from the local filesystem"""
+        self.log_user_call_command(ctx, 'play_local', query)
+
         member = ctx.author
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
         ctx.voice_client.play(source, after=lambda e: self.log.info('Player error: %s' % e) if e else None)
@@ -302,6 +327,8 @@ class Music(Cog):
     async def volume(self, ctx: Context, volume: int):
         """Changes the player's volume"""
 
+        self.log_user_call_command(ctx, 'volume', str(volume))
+
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
@@ -310,12 +337,15 @@ class Music(Cog):
         self.log.info("Changed volume to {}%".format(volume))
 
     @commands.command()
-    async def stop(self, ctx):
+    async def stop(self, ctx: Context):
         """Stops and disconnects the bot from voice"""
+        self.log_user_call_command(ctx, 'stop')
+        channel_id = ctx.voice_client.channel.id
+        self.remove_ds_client(channel_id)
         await ctx.voice_client.disconnect()
 
     @play.before_invoke
-    async def ensure_voice(self, ctx):
+    async def ensure_voice(self, ctx: Context):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -325,6 +355,7 @@ class Music(Cog):
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
 
+    def log_user_call_command(self, ctx: Context, cmd_name: str, *args):
+        self.log.info(f"Command: <{magenta(cmd_name)}| {cyan(' '.join(args))}> asked by {yellow(ctx.author.name)}")
 
-def setup(bot):
-    bot.add_cog(Music(bot))
+
