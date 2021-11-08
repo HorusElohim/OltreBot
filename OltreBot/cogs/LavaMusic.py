@@ -10,9 +10,48 @@ import re
 import discord
 import lavalink
 from discord.ext import commands
-from discord.ext.commands import Cog
+from discord.ext.commands import Cog, Context
+from OltreBot.util import get_logger
+from OltreBot.util.colors import *
+
+LOGGER = get_logger('Music', sub_folder='cog')
 
 url_rx = re.compile(r'https?://(?:www\.)?.+')
+
+
+class MusicEmbed:
+    @staticmethod
+    def playlist(self, author: discord.client, track: lavalink.AudioTrack):
+        self.log.info(f"Track embed asked by {yellow(author.name)}")
+        embed = discord.Embed()
+        return embed
+
+    @staticmethod
+    def empty(self, author: discord.client) -> discord.Embed:
+        self.log.info(f"Creating empty embed asked by {yellow(author.name)}")
+        embed = discord.Embed(title=f'No Current Track',
+                              author=self.bot.user.name,
+                              url='',
+                              colour=discord.Colour(0xE11B1B))
+
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        return embed
+
+    @staticmethod
+    def track(self, author: discord.client, track: lavalink.AudioTrack) -> discord.Embed:
+        self.log.info(f"Creating track embed asked by {yellow(author.name)}")
+
+        embed = discord.Embed(title=f'Now Playing {track.title}',
+                              author=self.bot.user.name,
+                              url=track.uri,
+                              colour=discord.Colour(0xE11B1B))
+
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        # embed.set_image(url=track.thumbnail)
+        # embed.add_field(name='Publish Time', value=track.pub_time, inline=True)
+        embed.add_field(name='Duration', value=track.duration, inline=True)
+        embed.set_footer(text=f'Requested by: {author.name}', icon_url=author.avatar_url)
+        return embed
 
 
 class LavalinkVoiceClient(discord.VoiceClient):
@@ -91,6 +130,7 @@ class LavalinkVoiceClient(discord.VoiceClient):
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.log = LOGGER
 
     # On Ready
     @Cog.listener()
@@ -98,7 +138,8 @@ class Music(commands.Cog):
 
         if not hasattr(self.bot, 'lavalink'):  # This ensures the client isn't overwritten during cog reloads.
             self.bot.lavalink = lavalink.Client(self.bot.user.id)
-            self.bot.lavalink.add_node('127.0.0.1', 2333, 'youshallnotpass', 'eu', 'default-node')  # Host, Port, Password, Region, Name
+            self.bot.lavalink.add_node('127.0.0.1', 2333, 'youshallnotpass', 'eu',
+                                       'default-node')  # Host, Port, Password, Region, Name
 
         lavalink.add_event_hook(self.track_hook)
 
@@ -125,6 +166,12 @@ class Music(commands.Cog):
             # This shouldn't be a problem as the only errors thrown in this cog are from `ensure_voice`
             # which contain a reason string, such as "Join a voicechannel" etc. You can modify the above
             # if you want to do things differently.
+
+    def get_player(self, guild_id: str) -> lavalink.DefaultPlayer:
+        return self.bot.lavalink.player_manager.get(guild_id)
+
+    def log_user_call_command(self, ctx: Context, cmd_name: str, *args):
+        self.log.info(f"Command: <{magenta(cmd_name)}| {cyan(' '.join(args))}> asked by {yellow(ctx.author.name)}")
 
     async def ensure_voice(self, ctx):
         """ This check ensures that the bot and command author are in the same voicechannel. """
@@ -173,7 +220,9 @@ class Music(commands.Cog):
     async def play(self, ctx, *, query: str):
         """ Searches and plays a song from a given query. """
         # Get the player for this guild from cache.
-        player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+        self.log_user_call_command(ctx, 'play', query)
+
+        player = self.get_player(ctx.guild.id)
         # Remove leading and trailing <>. <> may be used to suppress embedding links in Discord.
         query = query.strip('<>')
 
@@ -199,23 +248,32 @@ class Music(commands.Cog):
         #   NO_MATCHES      - query yielded no results
         #   LOAD_FAILED     - most likely, the video encountered an exception during loading.
         if results['loadType'] == 'PLAYLIST_LOADED':
+
+            description = []
             tracks = results['tracks']
 
-            for track in tracks:
+            embed.title = 'Playlist Enqueued!'
+            description.append(f'{results["playlistInfo"]["name"]} - {len(tracks)} tracks')
+
+            for idx, track in enumerate(tracks):
                 # Add all of the tracks from the playlist to the queue.
                 player.add(requester=ctx.author.id, track=track)
+                description.append(f'{idx}: {track["info"]["author"]} {track["info"]["title"]}')
 
-            embed.title = 'Playlist Enqueued!'
-            embed.description = f'{results["playlistInfo"]["name"]} - {len(tracks)} tracks'
-        else:
+            embed.description = '\n'.join(description)
+
+        elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed.title = 'Track Enqueued'
-            embed.description = f'[{track["info"]["title"]}]({track["info"]["uri"]})'
+            embed = MusicEmbed.track(self, ctx.author, lavalink.AudioTrack(track, requester=ctx.author.id))
 
             # You can attach additional information to audiotracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
             track = lavalink.models.AudioTrack(track, ctx.author.id, recommended=True)
             player.add(requester=ctx.author.id, track=track)
+
+        else:
+            embed.title = f'Result Query: {results["loadType"]}'
+            print(f"Result: {results}")
 
         await ctx.send(embed=embed)
 
@@ -223,6 +281,81 @@ class Music(commands.Cog):
         # the current track.
         if not player.is_playing:
             await player.play()
+
+    @commands.command()
+    async def stop(self, ctx):
+        """ Pause the player from the voice channel and clears its queue. """
+        self.log_user_call_command(ctx, 'stop')
+
+        player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        await player.stop()
+        await ctx.send(' Player stopped')
+
+    @commands.command()
+    async def track(self, ctx):
+        """ Get current Track info. """
+        player = self.get_player(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        if player.current:
+            track = player.current
+            embed = Music.track(self, ctx.author, track)
+        else:
+            embed = Music.empty(self, ctx.author)
+
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def pause(self, ctx):
+        """ Pause the player from the voice channel and clears its queue. """
+        player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        await player.set_pause()
+        await ctx.send('Track paused')
+
+    @commands.command()
+    async def skip(self, ctx):
+        """ Skip Track """
+        player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        await player.skip()
+        await ctx.send('Track skipped')
 
     @commands.command(aliases=['dc'])
     async def disconnect(self, ctx):
@@ -236,7 +369,7 @@ class Music(commands.Cog):
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send('You\'re not in my voicechannel!')
+            return await ctx.send("You're not in my voicechannel!")
 
         # Clear the queue to ensure old tracks don't start playing
         # when someone else queues something.
@@ -246,4 +379,3 @@ class Music(commands.Cog):
         # Disconnect from the voice channel.
         await ctx.voice_client.disconnect(force=True)
         await ctx.send('*⃣ | Disconnected.')
-
