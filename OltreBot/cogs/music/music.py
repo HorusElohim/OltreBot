@@ -1,130 +1,16 @@
-"""
-This example cog demonstrates basic usage of Lavalink.py, using the DefaultPlayer.
-As this example primarily showcases usage in conjunction with discord.py, you will need to make
-modifications as necessary for use with another Discord library.
-Usage of this cog requires Python 3.6 or higher due to the use of f-strings.
-Compatibility with Python 3.5 should be possible if f-strings are removed.
-"""
 import re
-
 import discord
 import lavalink
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 from OltreBot.util import get_logger
 from OltreBot.util.colors import *
+from .lavalink_voice_client import LavalinkVoiceClient
+from .embed import MusicEmbed
 
 LOGGER = get_logger('Music', sub_folder='cog')
 
 url_rx = re.compile(r'https?://(?:www\.)?.+')
-
-
-class MusicEmbed:
-    @staticmethod
-    def playlist(self, author: discord.client, track: lavalink.AudioTrack):
-        self.log.info(f"Track embed asked by {yellow(author.name)}")
-        embed = discord.Embed()
-        return embed
-
-    @staticmethod
-    def empty(self, author: discord.client) -> discord.Embed:
-        self.log.info(f"Creating empty embed asked by {yellow(author.name)}")
-        embed = discord.Embed(title=f'No Current Track',
-                              author=self.bot.user.name,
-                              url='',
-                              colour=discord.Colour(0xE11B1B))
-
-        embed.set_thumbnail(url=self.bot.user.avatar_url)
-        return embed
-
-    @staticmethod
-    def track(self, author: discord.client, track: lavalink.AudioTrack) -> discord.Embed:
-        self.log.info(f"Creating track embed asked by {yellow(author.name)}")
-
-        embed = discord.Embed(title=f'Now Playing {track.title}',
-                              author=self.bot.user.name,
-                              url=track.uri,
-                              colour=discord.Colour(0xE11B1B))
-
-        embed.set_thumbnail(url=self.bot.user.avatar_url)
-        # embed.set_image(url=track.thumbnail)
-        # embed.add_field(name='Publish Time', value=track.pub_time, inline=True)
-        embed.add_field(name='Duration', value=track.duration, inline=True)
-        embed.set_footer(text=f'Requested by: {author.name}', icon_url=author.avatar_url)
-        return embed
-
-
-class LavalinkVoiceClient(discord.VoiceClient):
-    """
-    This is the preferred way to handle external voice sending
-    This client will be created via a cls in the connect method of the channel
-    see the following documentation:
-    https://discordpy.readthedocs.io/en/latest/api.html#voiceprotocol
-    """
-
-    def __init__(self, client: discord.Client, channel: discord.abc.Connectable):
-        self.client = client
-        self.channel = channel
-        # ensure there exists a client already
-        if hasattr(self.client, 'lavalink'):
-            self.lavalink = self.client.lavalink
-        else:
-            self.client.lavalink = lavalink.Client(client.user.id)
-            self.client.lavalink.add_node(
-                'localhost',
-                2333,
-                'youshallnotpass',
-                'us',
-                'default-node')
-            self.lavalink = self.client.lavalink
-
-    async def on_voice_server_update(self, data):
-        # the data needs to be transformed before being handed down to
-        # voice_update_handler
-        lavalink_data = {
-            't': 'VOICE_SERVER_UPDATE',
-            'd': data
-        }
-        await self.lavalink.voice_update_handler(lavalink_data)
-
-    async def on_voice_state_update(self, data):
-        # the data needs to be transformed before being handed down to
-        # voice_update_handler
-        lavalink_data = {
-            't': 'VOICE_STATE_UPDATE',
-            'd': data
-        }
-        await self.lavalink.voice_update_handler(lavalink_data)
-
-    async def connect(self, *, timeout: float, reconnect: bool) -> None:
-        """
-        Connect the bot to the voice channel and create a player_manager
-        if it doesn't exist yet.
-        """
-        # ensure there is a player_manager when creating a new voice_client
-        self.lavalink.player_manager.create(guild_id=self.channel.guild.id)
-        await self.channel.guild.change_voice_state(channel=self.channel)
-
-    async def disconnect(self, *, force: bool) -> None:
-        """
-        Handles the disconnect.
-        Cleans up running player and leaves the voice client.
-        """
-        player = self.lavalink.player_manager.get(self.channel.guild.id)
-
-        # no need to disconnect if we are not connected
-        if not force and not player.is_connected:
-            return
-
-        # None means disconnect
-        await self.channel.guild.change_voice_state(channel=None)
-
-        # update the channel_id of the player to None
-        # this must be done because the on_voice_state_update that
-        # would set channel_id to None doesn't get dispatched after the
-        # disconnect
-        player.channel_id = None
-        self.cleanup()
 
 
 class Music(commands.Cog):
@@ -212,9 +98,20 @@ class Music(commands.Cog):
             # When this track_hook receives a "QueueEndEvent" from lavalink.py
             # it indicates that there are no tracks left in the player's queue.
             # To save on resources, we can tell the bot to disconnect from the voicechannel.
+            self.log.debug(f"Lavalink.Event QueueEndEvent")
             guild_id = int(event.player.guild_id)
             guild = self.bot.get_guild(guild_id)
             await guild.voice_client.disconnect(force=True)
+        if isinstance(event, lavalink.events.TrackStartEvent):
+            # When a new track start
+            self.log.debug(f"Lavalink.Event TrackStartEvent")
+            player: lavalink.DefaultPlayer = event.player
+            guild_id = int(event.player.guild_id)
+            guild = self.bot.get_guild(guild_id)
+            if player.current is not None:
+                embed = self.get_track_embed(self.bot.user, player.current)
+                for text_channel in guild.text_channels:
+                    await text_channel.send(embed=embed)
 
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, query: str):
@@ -247,8 +144,15 @@ class Music(commands.Cog):
         #   SEARCH_RESULT   - query prefixed with either ytsearch: or scsearch:.
         #   NO_MATCHES      - query yielded no results
         #   LOAD_FAILED     - most likely, the video encountered an exception during loading.
-        if results['loadType'] == 'PLAYLIST_LOADED':
+        if results['loadType'] == 'SEARCH_RESULT':
+            track = results['tracks'][0]
+            # You can attach additional information to audiotracks through kwargs, however this involves
+            # constructing the AudioTrack class yourself.
+            embed.title = 'Search completed!'
+            track = lavalink.models.AudioTrack(track, ctx.author.name, recommended=True)
+            player.add(requester=ctx.author.id, track=track)
 
+        if results['loadType'] == 'PLAYLIST_LOADED':
             description = []
             tracks = results['tracks']
 
@@ -257,23 +161,24 @@ class Music(commands.Cog):
 
             for idx, track in enumerate(tracks):
                 # Add all of the tracks from the playlist to the queue.
-                player.add(requester=ctx.author.id, track=track)
+                player.add(requester=ctx.author.name, track=track)
                 description.append(f'{idx}: {track["info"]["author"]} {track["info"]["title"]}')
 
             embed.description = '\n'.join(description)
 
         elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed = MusicEmbed.track(self, ctx.author, lavalink.AudioTrack(track, requester=ctx.author.id))
-
+            embed.title = 'Track loaded!'
             # You can attach additional information to audiotracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
-            track = lavalink.models.AudioTrack(track, ctx.author.id, recommended=True)
+            track = lavalink.models.AudioTrack(track, ctx.author.name, recommended=True)
             player.add(requester=ctx.author.id, track=track)
 
-        else:
-            embed.title = f'Result Query: {results["loadType"]}'
-            print(f"Result: {results}")
+        elif results['loadType'] == 'NO_MATCHES':
+            embed.title = f'No Match found'
+
+        elif results['loadType'] == 'LOAD_FAILED':
+            embed.title = f'Load failed.'
 
         await ctx.send(embed=embed)
 
@@ -317,11 +222,17 @@ class Music(commands.Cog):
 
         if player.current:
             track = player.current
-            embed = Music.track(self, ctx.author, track)
+            embed = self.get_track_embed(ctx.author, track)
         else:
-            embed = Music.empty(self, ctx.author)
+            embed = self.get_track_embed(ctx.author)
 
         await ctx.send(embed=embed)
+
+    def get_track_embed(self, author: discord.client, track: lavalink.AudioTrack = None) -> discord.Embed:
+        if isinstance(track, lavalink.AudioTrack):
+            return MusicEmbed.track(self, author, track)
+        else:
+            return MusicEmbed.empty(self, author)
 
     @commands.command()
     async def pause(self, ctx):
