@@ -1,3 +1,3 @@
 [submodule "Lavalink.py"]
 	path = Lavalink.py
-	url = git@github.com:HorusElohim/Lavalink.py.git
+	url = https://github.com/HorusElohim/Lavalink.py.git
