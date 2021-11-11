@@ -101,7 +101,18 @@ class Music(commands.Cog):
             self.log.debug(f"Lavalink.Event QueueEndEvent")
             guild_id = int(event.player.guild_id)
             guild = self.bot.get_guild(guild_id)
+            for text_channel in guild.text_channels:
+                await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
             await guild.voice_client.disconnect(force=True)
+
+        if isinstance(event, lavalink.events.TrackEndEvent):
+            self.log.debug(f"Lavalink.Event TrackEndEvent")
+            player: lavalink.DefaultPlayer = event.player
+            guild_id = int(event.player.guild_id)
+            guild = self.bot.get_guild(guild_id)
+            for text_channel in guild.text_channels:
+                await text_channel.send(f'Track: {event.track.title} terminated.')
+
         if isinstance(event, lavalink.events.TrackStartEvent):
             # When a new track start
             self.log.debug(f"Lavalink.Event TrackStartEvent")
@@ -149,7 +160,8 @@ class Music(commands.Cog):
             # You can attach additional information to audiotracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
             embed.title = 'Search completed!'
-            track = lavalink.models.AudioTrack(track, ctx.author.name, recommended=True)
+            track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
+            embed.description = f'Track: {track.title}'
             player.add(requester=ctx.author.id, track=track)
 
         if results['loadType'] == 'PLAYLIST_LOADED':
@@ -161,7 +173,7 @@ class Music(commands.Cog):
 
             for idx, track in enumerate(tracks):
                 # Add all of the tracks from the playlist to the queue.
-                player.add(requester=ctx.author.name, track=track)
+                player.add(requester=ctx.author, track=track)
                 description.append(f'{idx}: {track["info"]["author"]} {track["info"]["title"]}')
 
             embed.description = '\n'.join(description)
@@ -171,8 +183,9 @@ class Music(commands.Cog):
             embed.title = 'Track loaded!'
             # You can attach additional information to audiotracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
-            track = lavalink.models.AudioTrack(track, ctx.author.name, recommended=True)
-            player.add(requester=ctx.author.id, track=track)
+            track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
+            embed.description = f'Track: {track.title}'
+            player.add(requester=ctx.author, track=track)
 
         elif results['loadType'] == 'NO_MATCHES':
             embed.title = f'No Match found'
@@ -207,7 +220,7 @@ class Music(commands.Cog):
         await ctx.send(' Player stopped')
 
     @commands.command()
-    async def track(self, ctx):
+    async def current(self, ctx):
         """ Get current Track info. """
         player = self.get_player(ctx.guild.id)
 
@@ -225,6 +238,52 @@ class Music(commands.Cog):
             embed = self.get_track_embed(ctx.author, track)
         else:
             embed = self.get_track_embed(ctx.author)
+
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def queue(self, ctx):
+        """ Get current Track info. """
+        player = self.get_player(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        embed = discord.Embed()
+        embed.title = 'Current Queue'
+        desc = []
+        for idx, track in enumerate(player.queue):
+            desc.append(f'{idx}: {track.title}')
+        embed.description = '\n'.join(desc)
+            
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def clear(self, ctx):
+        """ Clear queue Tracks """
+        player = self.get_player(ctx.guild.id)
+
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send("You're not in my voicechannel!")
+
+        embed = discord.Embed()
+        tracks = len(player.queue)
+        embed.title = 'Queue cleared'
+        embed.description = f'removed {tracks} tracks.'
+
+        player.queue.clear()
 
         await ctx.send(embed=embed)
 
@@ -252,8 +311,8 @@ class Music(commands.Cog):
         await ctx.send('Track paused')
 
     @commands.command()
-    async def skip(self, ctx):
-        """ Skip Track """
+    async def next(self, ctx):
+        """ Next Track """
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
 
         if not player.is_connected:
@@ -265,8 +324,8 @@ class Music(commands.Cog):
             # may not disconnect the bot.
             return await ctx.send("You're not in my voicechannel!")
 
-        await player.skip()
-        await ctx.send('Track skipped')
+        await ctx.send('Next Track')
+        await player.play()
 
     @commands.command(aliases=['dc'])
     async def disconnect(self, ctx):

@@ -2,7 +2,7 @@ from setuptools import setup, find_namespace_packages
 
 PackageName = "OltreBot"
 AUTHOR = "HorusElohim"
-VERSION = "0.4"
+VERSION = "0.6"
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()

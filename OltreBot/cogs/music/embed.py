@@ -24,7 +24,7 @@ class MusicEmbed:
 
     @staticmethod
     def track(self, author: discord.client, track: lavalink.AudioTrack) -> discord.Embed:
-        self.log.info(f"Creating track embed asked by {yellow(author.name)}")
+        self.log.info(f"Creating track embed asked by {yellow(track.requester.name)}")
 
         embed = discord.Embed(title=f'Now Playing',
                               author=self.bot.user.name,
@@ -32,9 +32,10 @@ class MusicEmbed:
                               colour=discord.Colour(0xE11B1B))
 
         embed.set_thumbnail(url=self.bot.user.avatar_url)
-        # embed.set_image(url=track.thumbnail)
-        # embed.add_field(name='Publish Time', value=track.pub_time, inline=True)
+        embed.set_image(url=track.thumbnail)
+        # embed.add_field(name='Artist', value=track.author, inline=True)
         embed.add_field(name='Title', value=track.title, inline=True)
         embed.add_field(name='Duration', value=str(datetime.timedelta(milliseconds=track.duration)), inline=True)
-        embed.set_footer(text=f'Requested by: {track.requester}', icon_url=author.avatar_url)
+        embed.set_footer(text=f'Requested by: {track.requester.name}', icon_url=track.requester.avatar_url)
+
         return embed
