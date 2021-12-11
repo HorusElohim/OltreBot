@@ -108,10 +108,10 @@ class Music(commands.Cog):
 
         if isinstance(event, lavalink.events.TrackEndEvent):
             self.log.debug(f"Lavalink.Event TrackEndEvent")
-            guild_id = int(event.player.guild_id)
-            guild = self.bot.get_guild(guild_id)
-            for text_channel in guild.text_channels:
-                await text_channel.send(f'Track: {event.track.title} terminated.')
+            # guild_id = int(event.player.guild_id)
+            # guild = self.bot.get_guild(guild_id)
+            # for text_channel in guild.text_channels:
+            #     await text_channel.send(f'Track: {event.track.title} terminated.')
 
         if isinstance(event, lavalink.events.TrackStartEvent):
             # When a new track start
@@ -274,13 +274,21 @@ class Music(commands.Cog):
         else:
             return MusicEmbed.empty(self, author)
 
-    async def send_music_embed(self, ctx: Context, embed: discord.Embed):
+    async def send_music_embed(self, embed: discord.Embed, ctx: Context =None, text_channel: discord.TextChannel = None):
         if self.embed_id is None:
-            message = await ctx.send(embed=embed)
-            self.embed_id = message.id
+            if ctx:
+                message = await ctx.send(embed=embed)
+                self.embed_id = message.id
+            elif text_channel:
+                message = await text_channel.send(embed=embed)
+                self.embed_id = message.id
         else:
-            message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
-            await message.edit(embed=embed)
+            if ctx:
+                message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
+                await message.edit(embed=embed)
+            elif text_channel:
+                message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id)
+                await message.edit(embed=embed)
 
     @commands.command()
     async def pause(self, ctx):
