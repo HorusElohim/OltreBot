@@ -122,7 +122,7 @@ class Music(commands.Cog):
             if player.current is not None:
                 embed = self.get_track_embed(self.bot.user, player.current)
                 for text_channel in guild.text_channels:
-                    self.send_music_embed(text_channel, embed)
+                    await self.send_music_embed(text_channel, embed)
 
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, query: str):
@@ -220,7 +220,7 @@ class Music(commands.Cog):
         else:
             embed = self.get_track_embed(ctx.author)
 
-        self.send_music_embed(ctx, embed)
+        await self.send_music_embed(ctx, embed)
 
     @commands.command()
     async def queue(self, ctx: Context):
@@ -274,7 +274,7 @@ class Music(commands.Cog):
         else:
             return MusicEmbed.empty(self, author)
 
-    def send_music_embed(self, ctx: Context, embed: discord.Embed):
+    async def send_music_embed(self, ctx: Context, embed: discord.Embed):
         if self.embed_id is None:
             message = await ctx.send(embed=embed)
             self.embed_id = message.id
