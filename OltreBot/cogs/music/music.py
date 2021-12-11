@@ -122,7 +122,7 @@ class Music(commands.Cog):
             if player.current is not None:
                 embed = self.get_track_embed(self.bot.user, player.current)
                 for text_channel in guild.text_channels:
-                    await self.send_music_embed(text_channel, embed)
+                    await self.send_music_embed(embed, text_channel=text_channel)
 
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, query: str):
@@ -157,7 +157,7 @@ class Music(commands.Cog):
         #   LOAD_FAILED     - most likely, the video encountered an exception during loading.
         if results['loadType'] == 'SEARCH_RESULT':
             track = results['tracks'][0]
-            # You can attach additional information to audiotracks through kwargs, however this involves
+            # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
             embed.title = 'Search completed!'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
@@ -220,7 +220,7 @@ class Music(commands.Cog):
         else:
             embed = self.get_track_embed(ctx.author)
 
-        await self.send_music_embed(ctx, embed)
+        await self.send_music_embed(embed, ctx=ctx)
 
     @commands.command()
     async def queue(self, ctx: Context):
