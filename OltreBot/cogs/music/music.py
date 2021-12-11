@@ -1,6 +1,7 @@
 import re
 import discord
 import lavalink
+from typing import Union, Dict
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 from OltreBot.util import get_logger
@@ -17,7 +18,7 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = LOGGER
-        self.embed_id = None
+        self.embed_id: Union[Dict, None] = None
 
     # On Ready
     @Cog.listener()
@@ -274,14 +275,16 @@ class Music(commands.Cog):
         else:
             return MusicEmbed.empty(self, author)
 
-    async def send_music_embed(self, embed: discord.Embed, ctx: Context =None, text_channel: discord.TextChannel = None):
+    async def send_music_embed(self, embed: discord.Embed, ctx: Context = None,
+                               text_channel: discord.TextChannel = None):
         if self.embed_id is None:
+            self.embed_id = dict()
             if ctx:
                 message = await ctx.send(embed=embed)
-                self.embed_id = message.id
+                self.embed_id[ctx.channel.id] = message.id
             elif text_channel:
                 message = await text_channel.send(embed=embed)
-                self.embed_id = message.id
+                self.embed_id[ctx.channel.id] = message.id
         else:
             if ctx:
                 message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
