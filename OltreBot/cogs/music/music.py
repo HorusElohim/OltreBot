@@ -37,6 +37,10 @@ class Music(commands.Cog):
         """ Cog unload handler. This removes any event hooks that were registered. """
         self.bot.lavalink._event_hooks.clear()
 
+    async def send_msg(self, ctx: Context, msg: str):
+        self.log.debug(f'For user: {ctx.author} -> {msg}')
+        await ctx.send(msg)
+
     async def cog_before_invoke(self, ctx):
         """ Command before-invoke handler. """
         guild_check = ctx.guild is not None
@@ -51,7 +55,7 @@ class Music(commands.Cog):
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(error.original)
+            await self.send_msg(ctx, error.original)
             # The above handles errors thrown in this cog and shows them to the user.
             # This shouldn't be a problem as the only errors thrown in this cog are from `ensure_voice`
             # which contain a reason string, such as "Join a voice channel" etc. You can modify the above
@@ -150,7 +154,7 @@ class Music(commands.Cog):
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # AAlternatively, results['tracks'] could be an empty array if the query yielded no tracks.
         if not results or not results['tracks']:
-            return await ctx.send('Nothing found!')
+            return await self.send_msg(ctx, 'Nothing found!')
 
         embed = discord.Embed(color=discord.Color.blurple())
 
@@ -212,12 +216,12 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voicechannel!")
+            return await self.send_msg(ctx, "You're not in my voice-channel!")
 
         if player.current:
             track = player.current
@@ -234,12 +238,12 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voice channel!")
+            return await self.send_msg(ctx, "You're not in my voice channel!")
 
         embed = discord.Embed()
         embed.title = 'Current Queue'
@@ -257,12 +261,12 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voicechannel!")
+            return await self.send_msg(ctx, "You're not in my voicechannel!")
 
         embed = discord.Embed()
         tracks = len(player.queue)
@@ -296,7 +300,7 @@ class Music(commands.Cog):
         elif text_channel:
             if text_channel.id not in self.embed_id:
                 message = await text_channel.send(embed=embed)
-                self.embed_id[ctx.channel.id] = message.id
+                self.embed_id[text_channel.id] = message.id
             else:
                 message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id)
                 if message:
@@ -309,15 +313,15 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voice channel!")
+            return await self.send_msg(ctx, "You're not in my voice channel!")
 
         await player.set_pause(pause=True)
-        await ctx.send('Track paused')
+        await self.send_msg(ctx, 'Track paused')
 
     @commands.command()
     async def resume(self, ctx):
@@ -326,15 +330,15 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voice channel!")
+            return await self.send_msg(ctx, "You're not in my voice channel!")
 
         await player.set_pause(pause=False)
-        await ctx.send('Track paused')
+        await self.send_msg(ctx, 'Track paused')
 
     @commands.command(alias=['skip'])
     async def next(self, ctx):
@@ -343,14 +347,14 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voice channel!")
+            return await self.send_msg(ctx, "You're not in my voice channel!")
 
-        await ctx.send('Next Track')
+        await self.send_msg(ctx, 'Next Track')
         await player.play()
 
     @commands.command(aliases=['stop'])
@@ -360,12 +364,12 @@ class Music(commands.Cog):
 
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
-            return await ctx.send('Not connected.')
+            return await self.send_msg(ctx, 'Not connected.')
 
         if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
-            return await ctx.send("You're not in my voice channel!")
+            return await self.send_msg(ctx, "You're not in my voice channel!")
 
         # Clear the queue to ensure old tracks don't start playing
         # when someone else queues something.
@@ -376,4 +380,4 @@ class Music(commands.Cog):
         if ctx.author.voice.channel.id in self.embed_id:
             del self.embed_id[ctx.author.voice.channel.id]
         await ctx.voice_client.disconnect(force=True)
-        await ctx.send('*⃣ | Disconnected.')
+        await self.send_msg(ctx, '*⃣ | Disconnected.')
