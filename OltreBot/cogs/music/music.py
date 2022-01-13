@@ -146,7 +146,7 @@ class Music(commands.Cog):
         # Get the results for the query from Lavalink.
         start_time = time.time_ns()
         results = await player.node.get_tracks(query)
-        get_result_time_delta = (time.time_ns() - start_time) * int(1e9)
+        get_result_time_delta = (time.time_ns() - start_time) * int(1e-9)
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # AAlternatively, results['tracks'] could be an empty array if the query yielded no tracks.
         if not results or not results['tracks']:
