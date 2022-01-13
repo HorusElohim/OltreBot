@@ -8,6 +8,7 @@ from OltreBot.util import get_logger
 from OltreBot.util.colors import *
 from .lavalink_voice_client import LavalinkVoiceClient
 from .embed import MusicEmbed
+import time
 
 LOGGER = get_logger('Music', sub_folder='cog')
 
@@ -139,8 +140,9 @@ class Music(commands.Cog):
             query = f'ytsearch:{query}'
 
         # Get the results for the query from Lavalink.
+        start_time = time.time_ns()
         results = await player.node.get_tracks(query)
-
+        get_result_time_delta = (time.time_ns() - start_time) * int(1e9)
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # AAlternatively, results['tracks'] could be an empty array if the query yielded no tracks.
         if not results or not results['tracks']:
@@ -158,7 +160,7 @@ class Music(commands.Cog):
             track = results['tracks'][0]
             # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
-            embed.title = 'Search completed!'
+            embed.title = f'Search completed ({get_result_time_delta} sec)'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
             embed.description = f'Track: {track.title}'
             player.add(requester=ctx.author.id, track=track)
@@ -167,7 +169,7 @@ class Music(commands.Cog):
             description = []
             tracks = results['tracks']
 
-            embed.title = 'Playlist Enqueued!'
+            embed.title = f'Playlist Enqueued ({get_result_time_delta} sec)'
             description.append(f'{results["playlistInfo"]["name"]} - {len(tracks)} tracks')
 
             for idx, track in enumerate(tracks):
@@ -179,7 +181,7 @@ class Music(commands.Cog):
 
         elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed.title = 'Track loaded!'
+            embed.title = f'Track loaded ({get_result_time_delta} sec)'
             # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
@@ -187,10 +189,10 @@ class Music(commands.Cog):
             player.add(requester=ctx.author, track=track)
 
         elif results['loadType'] == 'NO_MATCHES':
-            embed.title = f'No Match found'
+            embed.title = f'No Match found ({get_result_time_delta} sec)'
 
         elif results['loadType'] == 'LOAD_FAILED':
-            embed.title = f'Load failed.'
+            embed.title = f'Load failed ({get_result_time_delta} sec)'
 
         await ctx.send(embed=embed)
 
