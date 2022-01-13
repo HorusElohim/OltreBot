@@ -114,7 +114,7 @@ class Music(commands.Cog):
                     del self.embed_id[text_channel.id]
                 message = await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
                 await asyncio.sleep(1)
-                await text_channel.delete_message(message)
+                await text_channel.delete_messages(message)
 
             await guild.voice_client.disconnect(force=True)
 
