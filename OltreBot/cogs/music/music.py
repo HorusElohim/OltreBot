@@ -8,6 +8,7 @@ from OltreBot.util import get_logger
 from OltreBot.util.colors import *
 from .lavalink_voice_client import LavalinkVoiceClient
 from .embed import MusicEmbed
+import asyncio
 import time
 
 LOGGER = get_logger('Music', sub_folder='cog')
@@ -107,7 +108,10 @@ class Music(commands.Cog):
             for text_channel in guild.text_channels:
                 if text_channel.id in self.embed_id:
                     del self.embed_id[text_channel.id]
-                await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
+                message = await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
+                await asyncio.sleep(1)
+                await text_channel.delete_message(message)
+
             await guild.voice_client.disconnect(force=True)
 
         if isinstance(event, lavalink.events.TrackEndEvent):
@@ -279,18 +283,21 @@ class Music(commands.Cog):
                                text_channel: discord.TextChannel = None):
         if self.embed_id is None:
             self.embed_id = dict()
-            if ctx:
+
+        if ctx:
+            if ctx.channel.id not in self.embed_id:
                 message = await ctx.send(embed=embed)
                 self.embed_id[ctx.channel.id] = message.id
-            elif text_channel:
-                message = await text_channel.send(embed=embed)
-                self.embed_id[ctx.channel.id] = message.id
-        else:
-            if ctx:
+            else:
                 message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
                 if message:
                     await message.edit(embed=embed)
-            elif text_channel:
+
+        elif text_channel:
+            if text_channel.id not in self.embed_id:
+                message = await text_channel.send(embed=embed)
+                self.embed_id[ctx.channel.id] = message.id
+            else:
                 message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id)
                 if message:
                     await message.edit(embed=embed)
