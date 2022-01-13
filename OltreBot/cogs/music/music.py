@@ -104,15 +104,13 @@ class Music(commands.Cog):
             guild_id = int(event.player.guild_id)
             guild = self.bot.get_guild(guild_id)
             for text_channel in guild.text_channels:
+                if text_channel.id in self.embed_id:
+                    del self.embed_id[text_channel.id]
                 await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
             await guild.voice_client.disconnect(force=True)
 
         if isinstance(event, lavalink.events.TrackEndEvent):
             self.log.debug(f"Lavalink.Event TrackEndEvent")
-            # guild_id = int(event.player.guild_id)
-            # guild = self.bot.get_guild(guild_id)
-            # for text_channel in guild.text_channels:
-            #     await text_channel.send(f'Track: {event.track.title} terminated.')
 
         if isinstance(event, lavalink.events.TrackStartEvent):
             # When a new track start
@@ -288,10 +286,12 @@ class Music(commands.Cog):
         else:
             if ctx:
                 message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
-                await message.edit(embed=embed)
+                if message:
+                    await message.edit(embed=embed)
             elif text_channel:
                 message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id)
-                await message.edit(embed=embed)
+                if message:
+                    await message.edit(embed=embed)
 
     @commands.command()
     async def pause(self, ctx):

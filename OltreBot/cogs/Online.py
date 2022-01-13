@@ -1,6 +1,6 @@
 from discord.ext.commands import Cog
 from datetime import datetime
-from discord import TextChannel
+from discord import TextChannel, Member, role
 from colorama import Fore
 from OltreBot.util import get_logger
 from OltreBot.util.colors import *
@@ -10,7 +10,7 @@ LOGGER = get_logger('Online', sub_folder='cog')
 
 BOT_URL = 'https://discord.com/api/oauth2/authorize?client_id=897532478485565480&permissions=8&scope=bot'
 
-STATUS = 'DEBUG-'  # DEBUG
+STATUS = 'ONLINE'  # DEBUG
 
 
 class Online(Cog):
@@ -33,6 +33,22 @@ class Online(Cog):
                         await channel.send(f'Oltre Bot is back online 👽')
                     elif STATUS == 'DEBUG':
                         await channel.send(f'Oltre Bot is in maintenance 🚧')
+
+    @commands.command(pass_context=True)
+    async def change_nick(self, ctx, member: Member, nick: str):
+        await member.edit(nick=nick)
+        self.log.info(f'Nickname was changed for {member.mention}!')
+
+    @commands.command(pass_context=True)
+    async def change_role(self, ctx, member: Member, new_role):
+        roles = ctx.guild.roles
+        _new_role = []
+        for r in roles:
+            if new_role in r.name:
+                _new_role.append(r)
+
+        await member.edit(roles=_new_role)
+        self.log.info(f'Role was changed for {member.mention} ')
 
     @commands.command()
     async def url(self, ctx):
