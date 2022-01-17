@@ -293,7 +293,7 @@ class Music(commands.Cog):
                 message = await ctx.send(embed=embed)
                 self.embed_id[ctx.channel.id] = message.id
             else:
-                message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id)
+                message = await self.bot.get_channel(ctx.channel.id).fetch_message(self.embed_id[ctx.channel.id])
                 if message:
                     await message.edit(embed=embed)
 
@@ -302,7 +302,7 @@ class Music(commands.Cog):
                 message = await text_channel.send(embed=embed)
                 self.embed_id[text_channel.id] = message.id
             else:
-                message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id)
+                message = await self.bot.get_channel(text_channel.id).fetch_message(self.embed_id[text_channel.id])
                 if message:
                     await message.edit(embed=embed)
 
