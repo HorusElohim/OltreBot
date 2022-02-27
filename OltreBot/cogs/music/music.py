@@ -112,9 +112,6 @@ class Music(commands.Cog):
             for text_channel in guild.text_channels:
                 if text_channel.id in self.embed_id:
                     del self.embed_id[text_channel.id]
-                message = await text_channel.send(f'No more tracks to play. Exiting bye bye ... ')
-                await asyncio.sleep(1)
-                await text_channel.delete_messages(message)
 
             await guild.voice_client.disconnect(force=True)
 
@@ -150,7 +147,7 @@ class Music(commands.Cog):
         # Get the results for the query from Lavalink.
         start_time = time.time_ns()
         results = await player.node.get_tracks(query)
-        get_result_time_delta = (time.time_ns() - start_time) * int(1e-9)
+        get_result_time_delta = (time.time_ns() - start_time) * int(1e-6)
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # AAlternatively, results['tracks'] could be an empty array if the query yielded no tracks.
         if not results or not results['tracks']:
@@ -168,7 +165,7 @@ class Music(commands.Cog):
             track = results['tracks'][0]
             # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
-            embed.title = f'Search completed ({get_result_time_delta} sec)'
+            embed.title = f'Search completed ({get_result_time_delta} ms)'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
             embed.description = f'Track: {track.title}'
             player.add(requester=ctx.author.id, track=track)
@@ -177,19 +174,19 @@ class Music(commands.Cog):
             description = []
             tracks = results['tracks']
 
-            embed.title = f'Playlist Enqueued ({get_result_time_delta} sec)'
+            embed.title = f'Playlist Enqueued ({get_result_time_delta} ms)'
             description.append(f'{results["playlistInfo"]["name"]} - {len(tracks)} tracks')
 
             for idx, track in enumerate(tracks):
                 # Add all the tracks from the playlist to the queue.
                 player.add(requester=ctx.author, track=track)
-                description.append(f'{idx}: {track["info"]["author"]} {track["info"]["title"]}')
+                description.append(f'{idx+1}: {track["info"]["author"]} {track["info"]["title"]}')
 
             embed.description = '\n'.join(description)
 
         elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed.title = f'Track loaded ({get_result_time_delta} sec)'
+            embed.title = f'Track loaded ({get_result_time_delta} ms)'
             # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
@@ -197,10 +194,10 @@ class Music(commands.Cog):
             player.add(requester=ctx.author, track=track)
 
         elif results['loadType'] == 'NO_MATCHES':
-            embed.title = f'No Match found ({get_result_time_delta} sec)'
+            embed.title = f'No Match found ({get_result_time_delta} ms)'
 
         elif results['loadType'] == 'LOAD_FAILED':
-            embed.title = f'Load failed ({get_result_time_delta} sec)'
+            embed.title = f'Load failed ({get_result_time_delta} ms)'
 
         await ctx.send(embed=embed)
 
@@ -208,6 +205,10 @@ class Music(commands.Cog):
         # the current track.
         if not player.is_playing:
             await player.play()
+
+    @commands.command(aliases=['r'])
+    async def radio(self, ctx: Context):
+        pass
 
     @commands.command()
     async def current(self, ctx: Context):

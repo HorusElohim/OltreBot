@@ -33,6 +33,7 @@ class Online(Cog):
                         await channel.send(f'Oltre Bot is back online 👽')
                     elif STATUS == 'DEBUG':
                         await channel.send(f'Oltre Bot is in maintenance 🚧')
+                    break
 
     @commands.command(pass_context=True)
     async def change_nick(self, ctx, member: Member, nick: str):
