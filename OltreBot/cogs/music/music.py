@@ -10,6 +10,9 @@ from .lavalink_voice_client import LavalinkVoiceClient
 from .embed import MusicEmbed
 import asyncio
 import time
+import ytm
+
+YTM = ytm.YouTubeMusic()
 
 LOGGER = get_logger('Music', sub_folder='cog')
 
@@ -78,7 +81,7 @@ class Music(commands.Cog):
 
         # These are commands that require the bot to join a voice channel (i.e. initiating playback).
         # Commands such as volume/skip etc. don't require the bot to be in a voice channel so don't need listing here.
-        should_connect = ctx.command.name in ('play',)
+        should_connect = ctx.command.name in ('play', 'radio')
 
         if not ctx.author.voice or not ctx.author.voice.channel:
             # Our cog_command_error handler catches this and sends it to the voice channel.
@@ -147,13 +150,11 @@ class Music(commands.Cog):
         # Get the results for the query from Lavalink.
         start_time = time.time_ns()
         results = await player.node.get_tracks(query)
-        get_result_time_delta = (time.time_ns() - start_time) * int(1e-6)
+        exec_stamp = (time.time_ns() - start_time) / int(1e6)
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # AAlternatively, results['tracks'] could be an empty array if the query yielded no tracks.
         if not results or not results['tracks']:
             return await self.send_msg(ctx, 'Nothing found!')
-
-        embed = discord.Embed(color=discord.Color.blurple())
 
         # Valid loadTypes are:
         #   TRACK_LOADED    - single video/direct URL)
@@ -165,39 +166,29 @@ class Music(commands.Cog):
             track = results['tracks'][0]
             # You can attach additional information to audio tracks through kwargs, however this involves
             # constructing the AudioTrack class yourself.
-            embed.title = f'Search completed ({get_result_time_delta} ms)'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
-            embed.description = f'Track: {track.title}'
+            embed = MusicEmbed.search(self, ctx.author, track, exec_stamp)
             player.add(requester=ctx.author.id, track=track)
 
         if results['loadType'] == 'PLAYLIST_LOADED':
-            description = []
             tracks = results['tracks']
-
-            embed.title = f'Playlist Enqueued ({get_result_time_delta} ms)'
-            description.append(f'{results["playlistInfo"]["name"]} - {len(tracks)} tracks')
-
             for idx, track in enumerate(tracks):
                 # Add all the tracks from the playlist to the queue.
                 player.add(requester=ctx.author, track=track)
-                description.append(f'{idx+1}: {track["info"]["author"]} {track["info"]["title"]}')
-
-            embed.description = '\n'.join(description)
+            embed = MusicEmbed.playlist(self, ctx.author, results["playlistInfo"]["name"], tracks, exec_stamp)
 
         elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed.title = f'Track loaded ({get_result_time_delta} ms)'
-            # You can attach additional information to audio tracks through kwargs, however this involves
-            # constructing the AudioTrack class yourself.
+            embed.title = f'Track loaded ({exec_stamp:.1f} ms)'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
             embed.description = f'Track: {track.title}'
             player.add(requester=ctx.author, track=track)
 
         elif results['loadType'] == 'NO_MATCHES':
-            embed.title = f'No Match found ({get_result_time_delta} ms)'
+            embed = MusicEmbed.failed(self, ctx.author, "No Match found", exec_stamp)
 
         elif results['loadType'] == 'LOAD_FAILED':
-            embed.title = f'Load failed ({get_result_time_delta} ms)'
+            embed = MusicEmbed.failed(self, ctx.author, "Load failed", exec_stamp)
 
         await ctx.send(embed=embed)
 
@@ -207,8 +198,22 @@ class Music(commands.Cog):
             await player.play()
 
     @commands.command(aliases=['r'])
-    async def radio(self, ctx: Context):
-        pass
+    async def radio(self, ctx: Context, *, query: str):
+        # Logs
+        self.log_user_call_command(ctx, 'radio', query)
+        start_time = time.time_ns()
+        # Retrieve final link
+        try:
+            songs = YTM.search_songs(query)
+            song_id = songs['items'][0]['id']
+            radio_id = songs['items'][0]['radio']['playlist_id']
+            final_url = f"https://music.youtube.com/watch?v={song_id}&list={radio_id}"
+            # Get Player
+            await self.play(ctx, query=final_url)
+        except Exception as e:
+            exec_stamp = (time.time_ns() - start_time) * int(1e-6)
+            embed = MusicEmbed.failed(self, ctx.author, "Failed Radio", exec_stamp)
+            await ctx.send(embed=embed)
 
     @commands.command()
     async def current(self, ctx: Context):
@@ -232,11 +237,10 @@ class Music(commands.Cog):
 
         await self.send_music_embed(embed, ctx=ctx)
 
-    @commands.command()
+    @commands.command(alias=['q'])
     async def queue(self, ctx: Context):
         """ Get current Track info. """
         player = self.get_player(ctx.guild.id)
-
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
             return await self.send_msg(ctx, 'Not connected.')
@@ -246,12 +250,7 @@ class Music(commands.Cog):
             # may not disconnect the bot.
             return await self.send_msg(ctx, "You're not in my voice channel!")
 
-        embed = discord.Embed()
-        embed.title = 'Current Queue'
-        desc = []
-        for idx, track in enumerate(player.queue):
-            desc.append(f'{idx}: {track.title}')
-        embed.description = '\n'.join(desc)
+        embed = MusicEmbed.playlist(self, ctx.author, "Current Queue", player.queue, 0.0)
 
         await ctx.send(embed=embed)
 
@@ -341,7 +340,7 @@ class Music(commands.Cog):
         await player.set_pause(pause=False)
         await self.send_msg(ctx, 'Track paused')
 
-    @commands.command(alias=['skip'])
+    @commands.command(alias=['skip', 'n'])
     async def next(self, ctx):
         """ Next Track """
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
@@ -354,8 +353,6 @@ class Music(commands.Cog):
             # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
             # may not disconnect the bot.
             return await self.send_msg(ctx, "You're not in my voice channel!")
-
-        await self.send_msg(ctx, 'Next Track')
         await player.play()
 
     @commands.command(aliases=['stop'])

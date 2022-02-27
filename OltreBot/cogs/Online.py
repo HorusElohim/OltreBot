@@ -10,6 +10,7 @@ LOGGER = get_logger('Online', sub_folder='cog')
 
 BOT_URL = 'https://discord.com/api/oauth2/authorize?client_id=897532478485565480&permissions=8&scope=bot'
 
+VERSION = "0.9"
 STATUS = 'ONLINE'  # DEBUG
 
 
@@ -30,7 +31,7 @@ class Online(Cog):
                 if isinstance(channel, TextChannel):
                     self.log.info(f'Writing to {blue(guild)}::{cyan(channel)}')
                     if STATUS == 'ONLINE':
-                        await channel.send(f'Oltre Bot is back online 👽')
+                        await channel.send(f'Oltre Bot is back online 👽 v{VERSION}')
                     elif STATUS == 'DEBUG':
                         await channel.send(f'Oltre Bot is in maintenance 🚧')
                     break

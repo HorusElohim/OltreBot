@@ -1,3 +1,6 @@
 [submodule "Lavalink.py"]
 	path = Lavalink.py
 	url = https://github.com/HorusElohim/Lavalink.py.git
+[submodule "python-youtube-music"]
+	path = python-youtube-music
+	url = https://github.com/tombulled/python-youtube-music.git
