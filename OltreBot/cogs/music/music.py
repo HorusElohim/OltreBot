@@ -179,9 +179,8 @@ class Music(commands.Cog):
 
         elif results['loadType'] == 'TRACK_LOADED':
             track = results['tracks'][0]
-            embed.title = f'Track loaded ({exec_stamp:.1f} ms)'
             track = lavalink.models.AudioTrack(track, ctx.author, recommended=True)
-            embed.description = f'Track: {track.title}'
+            embed = self.get_track_embed(ctx.author, track)
             player.add(requester=ctx.author, track=track)
 
         elif results['loadType'] == 'NO_MATCHES':

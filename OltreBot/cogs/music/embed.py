@@ -55,6 +55,8 @@ class MusicEmbed:
 
         return embed
 
+
+
     @staticmethod
     def search(self, author: discord.client, track: lavalink.AudioTrack, execute_time: float) -> discord.Embed:
         self.log.info(f"Creating <search> track embed asked by {yellow(author.name)}")
