@@ -8,7 +8,6 @@ from OltreBot.util import get_logger
 from OltreBot.util.colors import *
 from .lavalink_voice_client import LavalinkVoiceClient
 from .embed import MusicEmbed
-import asyncio
 import time
 import ytm
 
@@ -58,6 +57,7 @@ class Music(commands.Cog):
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
+            self.log.error(f"Error <{error}> asked by {yellow(ctx.author.name)}")
             await self.send_msg(ctx, error.original)
             # The above handles errors thrown in this cog and shows them to the user.
             # This shouldn't be a problem as the only errors thrown in this cog are from `ensure_voice`
@@ -375,4 +375,4 @@ class Music(commands.Cog):
         await player.stop()
         # Disconnect from the voice channel.
         await ctx.voice_client.disconnect(force=True)
-        await self.send_msg(ctx, '*⃣ | Disconnected.')
+        await self.send_msg(ctx, '**Disconnected**')

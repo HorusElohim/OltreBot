@@ -2,7 +2,7 @@ from setuptools import setup, find_namespace_packages
 
 PackageName = "OltreBot"
 AUTHOR = "HorusElohim"
-VERSION = "0.9"
+VERSION = "1.0"
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -16,7 +16,7 @@ with open('LICENSE') as f:
 setup(
     name=PackageName,
     author=AUTHOR,
-    url='https://github.com/HorusElohim/NetNode',
+    url='https://github.com/HorusElohim/OltreBot',
     version=VERSION,
     license=license,
     description='',
