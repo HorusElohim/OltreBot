@@ -1,6 +1,5 @@
 from discord.ext.commands import Cog
 from datetime import datetime
-from OltreBot.util.colors import *
 from discord.ext import commands
 from .Base import BaseCog
 from enum import Enum

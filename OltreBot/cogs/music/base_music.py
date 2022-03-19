@@ -1,14 +1,8 @@
-import re
 import lavalink
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
-from OltreBot.util import get_logger
-from OltreBot.util.colors import *
-from OltreBot.util.discord_color import DiscordColorMsg as Dcolor
 from .lavalink_voice_client import LavalinkVoiceClient
 from ..Base import BaseCog
-
-url_rx = re.compile(r'https?://(?:www\.)?.+')
 
 
 class BaseMusic(BaseCog):
