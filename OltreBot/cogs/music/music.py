@@ -30,14 +30,14 @@ class Music(commands.Cog):
 
         if not hasattr(self.bot, 'lavalink'):  # This ensures the client isn't overwritten during cog reloads.
             self.bot.lavalink = lavalink.Client(self.bot.user.id)
-            self.bot.lavalink.add_node('127.0.0.1', 2333, 'youshallnotpass', 'eu',
-                                       'default-node')  # Host, Port, Password, Region, Name
+            # Host, Port, Password, Region, Name
+            self.bot.lavalink.add_node('127.0.0.1', 2333, 'oltrebot-secret-password', 'eu', 'default-node')
 
         lavalink.add_event_hook(self.track_hook)
 
     def cog_unload(self):
         """ Cog unload handler. This removes any event hooks that were registered. """
-        self.bot.lavalink._event_hooks.clear()
+        self.bot.lavalink.cleanup()
 
     async def send_msg(self, ctx: Context, msg: str):
         self.log.debug(f'For user: {ctx.author} -> {msg}')

@@ -1,23 +1,14 @@
 from discord.ext.commands import Cog
-from discord.ext import commands
 from datetime import datetime
-from OltreBot.util import get_logger
-
-LOGGER = get_logger('Welcome', sub_folder='cog')
+from .Base import BaseCog
 
 
-class Welcome(Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.log = LOGGER
-        self._last_member = None
+class Welcome(BaseCog):
 
     @Cog.listener()
     async def on_member_join(self, member):
         channel = member.guild.system_channel
         guild = member.guild
         if channel is not None:
-            await channel.send(f'{datetime.now()} Welcome {member.mention} to the server {guild}.')
-            self.log.info(f'New member join in the server: {guild}++ -> {member.mention}')
-
-
+            msg = f'{datetime.now()}: Welcome {member.mention} to the server'
+            await self.send_channel_msg(msg, self.color.BLUE)
