@@ -2,6 +2,7 @@ from pathlib import Path
 from discord.ext import commands
 from discord import Status
 import OltreBot as ob
+from discord_components import DiscordComponents
 
 LOGGER = ob.util.get_logger('OltreBot')
 PREFIX = '.'
@@ -11,9 +12,10 @@ STATUS = Status.online
 class Bot:
     def __init__(self, token, cogs_path: Path = Path(ob.__path__[0]) / 'cogs'):
         self.log = LOGGER
-        self.log.debug(f"Started")
+        self.log.debug(f"Discord BOT Started!")
         self.token = token
         self.bot = commands.Bot(command_prefix=PREFIX, status=STATUS)
+        DiscordComponents(self.bot)
         self.cogs_path = cogs_path
         self.load_cogs()
 

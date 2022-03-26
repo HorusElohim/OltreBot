@@ -2,11 +2,12 @@ from discord.ext.commands import Cog
 from datetime import datetime
 from discord.ext import commands
 from .Base import BaseCog
+from OltreBot.util.colors import *
 from enum import Enum
 
 BOT_URL = 'https://discord.com/api/oauth2/authorize?client_id=897532478485565480&permissions=8&scope=bot'
 
-VERSION = "1.X"
+VERSION = "1.5"
 
 
 class WakeupStatus(Enum):
@@ -19,9 +20,9 @@ def wakeup_message(status: WakeupStatus = WakeupStatus.ONLINE):
     if status == WakeupStatus.ONLINE:
         return f'Oltre Bot is back online 👽 v{VERSION}'
     elif status == WakeupStatus.ONLINE:
-        return f'Oltre Bot is in maintenance 🚧 v{VERSION}'
+        return f'Oltre Bot is in maintenance 🚧 v{VERSION}. Momentarily not available!'
     elif status == WakeupStatus.UPGRADE:
-        return f'Oltre Bot is currently upgrading 💻 v{VERSION}'
+        return f'Oltre Bot is currently upgrading 💻 v{VERSION}. Momentarily not available!'
 
 
 class Online(BaseCog):
@@ -34,7 +35,7 @@ class Online(BaseCog):
         self.log.info(f'Name: {green(self.bot.user.name)}')
         self.log.info(f'ID: {green(self.bot.user.id)}')
 
-        # await self.broadcast_message_guild(wakeup_message(WakeupStatus.UPGRADE), c_level=self.color.BLUE)
+        await self.broadcast_message_guild(wakeup_message(WakeupStatus.ONLINE), c_level=self.color.BLUE)
 
     @commands.command()
     async def url(self, ctx):

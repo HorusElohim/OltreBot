@@ -1,11 +1,14 @@
+import discord
 from discord.ext.commands import Cog
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
-from discord import TextChannel
+from discord import TextChannel, Message
 from datetime import datetime
 from OltreBot.util.colors import *
 from OltreBot.util.discord_color import DiscordColorMsg as Dc
 from enum import Enum
+from typing import Dict
+import time
 
 
 class ColorLevel(Enum):
@@ -51,16 +54,46 @@ class BaseCog(Cog):
         self.bot = bot
         self.log = logger
         self.color = ColorLevel
+        self.perf_measure: dict = {}
 
-    async def send_ctx_msg(self, ctx: Context, msg: str, c_level: ColorLevel = ColorLevel.WHITE):
-        console_msg, discord_msg = format_message_color(msg, c_level)
-        self.log.debug(f'To user -> {yellow(ctx.author)}: {console_msg}')
-        await ctx.send(discord_msg)
+    def start_measure(self, name: str):
+        self.perf_measure[name] = time.time_ns()
 
-    async def send_channel_msg(self, channel: TextChannel, msg: str, c_level: ColorLevel = ColorLevel.WHITE):
+    def end_measure(self, name: str):
+        if name in self.perf_measure:
+            exec_ms = (time.time_ns() - self.perf_measure[name]) * float(1e-6)
+            del self.perf_measure[name]
+            return exec_ms
+        else:
+            return 0
+
+    def log_user_call_command(self, author: Context.author, cmd_name: str, *args):
+        self.log.info(f"{yellow(author.name)} -> <{magenta(cmd_name)}> : {cyan(' '.join(args))}")
+
+    async def send_ctx_msg(self, ctx: Context, msg: str, c_level: ColorLevel = ColorLevel.WHITE) -> Message:
         console_msg, discord_msg = format_message_color(msg, c_level)
-        self.log.debug(f'To channel -> {cyan(channel)}: {console_msg}')
-        await channel.send(discord_msg)
+        self.log.debug(f'Send txt to user -> {yellow(ctx.author)}: {console_msg}')
+        msg = await ctx.send(discord_msg)
+        return msg
+
+    async def send_channel_msg(self, channel: TextChannel, msg: str, c_level: ColorLevel = ColorLevel.WHITE) -> Message:
+        console_msg, discord_msg = format_message_color(msg, c_level)
+        self.log.debug(f'Send txt to channel -> {cyan(channel)}: {console_msg}')
+        msg = await channel.send(discord_msg)
+        return msg
+
+    async def send_channel_embed(self, channel: TextChannel, embed: discord.Embed) -> Message:
+        self.log.debug(f'To embed to channel -> {cyan(channel)}')
+        msg = await channel.send(embed=embed)
+        return msg
+
+    async def modify_channel_msg_embed(self, channel: TextChannel, msg_id: int, embed: discord.Embed):
+        self.log.debug(f'Modifying embed to channel -> {cyan(channel)}')
+        msg = await self.get_message_with_id(channel, msg_id)
+        await msg.edit(embed=embed)
+
+    async def get_message_with_id(self, channel: TextChannel, msg_id: int) -> Message:
+        return await self.bot.get_channel(channel.id).fetch_message(msg_id)
 
     async def broadcast_message_guild(self, message: str, c_level: ColorLevel = ColorLevel.WHITE):
         """ Broadcast a message to all the guilds """
@@ -70,3 +103,7 @@ class BaseCog(Cog):
                     self.log.info(f'Broadcasting to {blue(guild)}::{cyan(channel)} -> {message}')
                     await self.send_channel_msg(channel, message, c_level=c_level)
                     break
+
+    async def delete_all_message(self, channel: TextChannel):
+        self.log.debug("delete_all_message")
+        await channel.purge()

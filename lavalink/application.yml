@@ -15,7 +15,7 @@ lavalink:
       vimeo: true
       http: true
       local: false
-    bufferDurationMs: 2500
+    bufferDurationMs: 2250
     youtubePlaylistLoadLimit: 6 # Number of pages at 100 each
     frameBufferDurationMs: 5000 # How many milliseconds of audio to keep buffered
     playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
