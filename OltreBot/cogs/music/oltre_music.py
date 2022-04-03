@@ -201,7 +201,6 @@ class OltreMusic(BaseMusic):
 
         if isinstance(event, lavalink.events.TrackEndEvent):
             self.log.debug(f"{magenta('<TrackEndEvent>')}")
-            await self.update_queue_message_from_event(event)
 
         if isinstance(event, lavalink.events.TrackStartEvent):
             self.log.debug(f"{magenta('<TrackStartEvent>')}")
