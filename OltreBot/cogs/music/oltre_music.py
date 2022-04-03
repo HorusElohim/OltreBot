@@ -210,7 +210,8 @@ class OltreMusic(BaseMusic):
     async def update_queue_message_from_event(self, event):
         guild_id = event.player.guild_id
         queue: list = self.get_queue_tracks(guild_id)
-        queue.insert(0, event.player.current)
+        if event.player.current not in queue:
+            queue.insert(0, event.player.current)
         await self.modify_oltrebot_message(guild_id, MusicEmbed.queue(self, queue))
 
     async def update_queue_message_from_new_tracks(self, guild_id: str):
