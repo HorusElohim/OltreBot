@@ -43,7 +43,7 @@ class Music(commands.Cog):
         self.log.debug(f'For user: {ctx.author} -> {msg}')
         await ctx.send(msg)
 
-    async def cog_before_invoke(self, ctx):
+    async def cog_before_invoke(self, ctx: Context):
         """ Command before-invoke handler. """
         guild_check = ctx.guild is not None
         #  This is essentially the same as `@commands.guild_only()`
@@ -52,6 +52,9 @@ class Music(commands.Cog):
         if guild_check:
             await self.ensure_voice(ctx)
             #  Ensure that the bot and command author share a mutual voice channel.
+
+        if ctx.author.id == 165927011280224257:
+            raise commands.CommandInvokeError('Toxic people cannot use this bot!')
 
         return guild_check
 
