@@ -21,8 +21,8 @@ class LavalinkVoiceClient(discord.VoiceClient):
             self.client.lavalink.add_node(
                 'localhost',
                 2333,
-                'youshallnotpass',
-                'us',
+                'oltrebot-secret-password',
+                'eu',
                 'default-node')
             self.lavalink = self.client.lavalink
 

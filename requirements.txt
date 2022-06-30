@@ -7,3 +7,4 @@ youtube_dl
 colorama
 pandas
 lavalink
+discord-components
