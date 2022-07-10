@@ -7,7 +7,7 @@ import os
 load_dotenv(dotenv_path=Path.cwd() / '.env')
 token = os.getenv('DEVELOP_TOKEN')
 if token is None:
-    print("No .env file containing DS token where found! Exiting...")
+    print("No Discord Token found , exiting ...")
     exit(-1)
 
 
