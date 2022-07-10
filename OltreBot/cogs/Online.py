@@ -35,10 +35,10 @@ class Online(BaseCog):
         self.log.info(f'Name: {green(self.bot.user.name)}')
         self.log.info(f'ID: {green(self.bot.user.id)}')
 
-        await self.broadcast_message_guild(wakeup_message(WakeupStatus.ONLINE), c_level=self.color.BLUE)
+        # await self.broadcast_message_guild(wakeup_message(WakeupStatus.ONLINE), c_level=self.color.BLUE)
 
     @commands.command()
-    async def url(self, ctx):
+    async def share(self, ctx):
         """ Get bot url """
         await ctx.send(f'Use this link to add the bot on your server: {BOT_URL}')
 
