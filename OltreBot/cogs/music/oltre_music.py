@@ -1,5 +1,5 @@
 import re
-import ytm
+# import ytm
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 from .base_music import BaseMusic
@@ -8,7 +8,7 @@ from .embed import MusicEmbed
 from OltreBot.util.colors import *
 import lavalink
 
-YTM = ytm.YouTubeMusic()
+# YTM = ytm.YouTubeMusic()
 
 url_rx = re.compile(r'https?://(?:www\.)?.+')
 
@@ -112,24 +112,24 @@ class OltreMusic(BaseMusic):
             self.log.error(f'<Exception> {ex}')
             await ctx.send(embed=MusicEmbed.failed(self, ctx.author, "Something Fail", self.end_measure('play')))
 
-    @commands.command(aliases=['r'])
-    async def radio(self, ctx: Context, *, query: str):
-        """ Searches and plays a radio playlist from a given query. """
-        self.log_user_call_command(ctx.author, 'radio', query)
-        # Start timer
-        self.start_measure('radio')
-        # Retrieve final link
-        try:
-            songs = YTM.search_songs(query)
-            song_id = songs['items'][0]['id']
-            radio_id = songs['items'][0]['radio']['playlist_id']
-            final_url = f"https://music.youtube.com/watch?v={song_id}&list={radio_id}"
-            # Get Player
-            await self.play(ctx, query=final_url)
-        except Exception as e:
-            self.log.error(f'<Exception> {e}')
-            embed = MusicEmbed.failed(self, ctx.author, "Failed Radio", self.end_measure('radio'))
-            await ctx.send(embed=embed)
+    # @commands.command(aliases=['r'])
+    # async def radio(self, ctx: Context, *, query: str):
+    #     """ Searches and plays a radio playlist from a given query. """
+    #     self.log_user_call_command(ctx.author, 'radio', query)
+    #     # Start timer
+    #     self.start_measure('radio')
+    #     # Retrieve final link
+    #     try:
+    #         songs = YTM.search_songs(query)
+    #         song_id = songs['items'][0]['id']
+    #         radio_id = songs['items'][0]['radio']['playlist_id']
+    #         final_url = f"https://music.youtube.com/watch?v={song_id}&list={radio_id}"
+    #         # Get Player
+    #         await self.play(ctx, query=final_url)
+    #     except Exception as e:
+    #         self.log.error(f'<Exception> {e}')
+    #         embed = MusicEmbed.failed(self, ctx.author, "Failed Radio", self.end_measure('radio'))
+    #         await ctx.send(embed=embed)
 
     @commands.command(aliases=['c'])
     async def clear(self, ctx: Context):
