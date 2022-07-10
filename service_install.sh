@@ -6,8 +6,8 @@ After=network.target
 Type=simple
 User=mark
 Restart=always
-EnvironmentFile=/home/$USER/.env
-ExecStart=/mark/HorusElohim/OltreBot
+EnvironmentFile=/mark/HorusElohim/OltreBot/.env
+ExecStart=/mark/HorusElohim/OltreBot/start.sh
 [Install]
 WantedBy=default.target
 " > /etc/systemd/system/oltrebot.service
