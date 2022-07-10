@@ -252,7 +252,7 @@ class Music(commands.Cog):
             # may not disconnect the bot.
             return await self.send_msg(ctx, "You're not in my voice channel!")
 
-        embed = MusicEmbed.playlist(self, ctx.author, "Current Queue", player.queue, 0.0)
+        embed = MusicEmbed.playlist(self, ctx.author, "Current Queue", [player.current] + player.queue, 0.0)
 
         await ctx.send(embed=embed)
 
