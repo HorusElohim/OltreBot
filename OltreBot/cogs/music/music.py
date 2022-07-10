@@ -9,9 +9,9 @@ from OltreBot.util.colors import *
 from .lavalink_voice_client import LavalinkVoiceClient
 from .embed import MusicEmbed
 import time
-import ytm
+# import ytm
 
-YTM = ytm.YouTubeMusic()
+# YTM = ytm.YouTubeMusic()
 
 LOGGER = get_logger('Music', sub_folder='cog')
 
@@ -199,23 +199,23 @@ class Music(commands.Cog):
         if not player.is_playing:
             await player.play()
 
-    @commands.command(aliases=['r'])
-    async def radio(self, ctx: Context, *, query: str):
-        # Logs
-        self.log_user_call_command(ctx, 'radio', query)
-        start_time = time.time_ns()
-        # Retrieve final link
-        try:
-            songs = YTM.search_songs(query)
-            song_id = songs['items'][0]['id']
-            radio_id = songs['items'][0]['radio']['playlist_id']
-            final_url = f"https://music.youtube.com/watch?v={song_id}&list={radio_id}"
-            # Get Player
-            await self.play(ctx, query=final_url)
-        except Exception as e:
-            exec_stamp = (time.time_ns() - start_time) * int(1e-6)
-            embed = MusicEmbed.failed(self, ctx.author, "Failed Radio", exec_stamp)
-            await ctx.send(embed=embed)
+    # @commands.command(aliases=['r'])
+    # async def radio(self, ctx: Context, *, query: str):
+    #     # Logs
+    #     self.log_user_call_command(ctx, 'radio', query)
+    #     start_time = time.time_ns()
+    #     # Retrieve final link
+    #     try:
+    #         songs = YTM.search_songs(query)
+    #         song_id = songs['items'][0]['id']
+    #         radio_id = songs['items'][0]['radio']['playlist_id']
+    #         final_url = f"https://music.youtube.com/watch?v={song_id}&list={radio_id}"
+    #         # Get Player
+    #         await self.play(ctx, query=final_url)
+    #     except Exception as e:
+    #         exec_stamp = (time.time_ns() - start_time) * int(1e-6)
+    #         embed = MusicEmbed.failed(self, ctx.author, "Failed Radio", exec_stamp)
+    #         await ctx.send(embed=embed)
 
     @commands.command()
     async def current(self, ctx: Context):

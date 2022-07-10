@@ -1,7 +1,7 @@
 discord.py[voice]
-python-dotenv~=0.19.1
+python-dotenv
 tabulate
-setuptools~=44.0.0
+setuptools
 youtube_search
 youtube_dl
 colorama
